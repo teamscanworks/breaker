@@ -12,8 +12,9 @@ import (
 var (
 	ExampleConfig = Config{
 		Cosmos: Cosmos{
-			RPCEndpoint: "http://127.0.0.1:26657",
-			PrivateKey:  "",
+			RPCEndpoint:  "http://127.0.0.1:1317",
+			GRPCEndpoint: "http://127.0.0.1:9090",
+			PrivateKey:   "",
 		},
 		MonitoringAPI: MonitoringAPI{
 			ListenAddress: "127.0.0.1:3070",
@@ -39,7 +40,8 @@ type Config struct {
 // Cosmos provides configuration of our connection to a cosmos chain
 type Cosmos struct {
 	// rpc endpoint we use to communicate with a cosmos chain
-	RPCEndpoint string `yaml:"rpc_endpoint"`
+	RPCEndpoint  string `yaml:"rpc_endpoint"`
+	GRPCEndpoint string `yaml:"grpc_endpoint"`
 	// hex encoded private key used for signing transactions
 	PrivateKey string     `yaml:"private_key"`
 	Options    CosmosOpts `yaml:"options"`
