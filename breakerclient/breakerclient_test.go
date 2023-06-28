@@ -18,6 +18,11 @@ func TestBreakerClientNew(t *testing.T) {
 	bc, err := NewBreakerClient(cfg)
 	require.NoError(t, err)
 	require.NotNil(t, bc)
+	defer bc.Close()
+
+	accounts, err := bc.Accounts(ctx)
+	require.NoError(t, err)
+	t.Logf("accounts %v", accounts)
 
 	disabledCmds, err := bc.ListDisabledCommands(ctx)
 	require.NoError(t, err)
