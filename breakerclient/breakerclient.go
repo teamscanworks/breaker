@@ -21,6 +21,7 @@ type BreakerClient struct {
 	qc       types.QueryClient
 	fc       tx.Factory
 	gprcConn *grpc.ClientConn
+	flagSet  *pflag.FlagSet
 }
 
 func NewBreakerClient(
@@ -59,6 +60,7 @@ func NewBreakerClient(
 		qc,
 		fc,
 		grpcConn,
+		flagSet,
 	}, nil
 }
 
@@ -75,7 +77,7 @@ func (bc *BreakerClient) Account(ctx context.Context, address string) (*types.Ac
 }
 
 func (bc *BreakerClient) Accounts(ctx context.Context) (*types.AccountsResponse, error) {
-	page, err := client.ReadPageRequest(nil)
+	page, err := client.ReadPageRequest(bc.flagSet)
 	if err != nil {
 		return nil, err
 	}
