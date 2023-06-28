@@ -13,7 +13,7 @@ var (
 	ExampleConfig = Config{
 		Cosmos: Cosmos{
 			RPCEndpoint:  "http://127.0.0.1:1317",
-			GRPCEndpoint: "http://127.0.0.1:9090",
+			GRPCEndpoint: "127.0.0.1:9090",
 			PrivateKey:   "",
 		},
 		MonitoringAPI: MonitoringAPI{
