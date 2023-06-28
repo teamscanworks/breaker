@@ -14,5 +14,5 @@ if [[ "$1" == "reset" ]]; then
     simd genesis collect-gentxs --home "$DATA_DIR"
     simd genesis validate --home "$DATA_DIR"
 else
-    simd start --home "$DATA_DIR" --x-crisis-skip-assert-invariants --moniker "$NAME" --rpc.unsafe --api.enable --log_level info
+    simd start --home "$DATA_DIR" --x-crisis-skip-assert-invariants --moniker "$NAME" --rpc.unsafe --api.enable --log_level info --grpc-web.enable
 fi
