@@ -4,19 +4,23 @@ import (
 	"context"
 	"fmt"
 
-	"cosmossdk.io/x/circuit/types"
 	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
+
+	"cosmossdk.io/x/circuit/types"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/tx"
+	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/spf13/pflag"
 	config "github.com/teamscanworks/breaker/config"
+	"google.golang.org/grpc"
 )
 
 type BreakerClient struct {
-	ctx client.Context
-	rc  *rpchttp.HTTP
-	qc  types.QueryClient
-	fc  tx.Factory
+	ctx      client.Context
+	rc       *rpchttp.HTTP
+	qc       types.QueryClient
+	fc       tx.Factory
+	gprcConn *grpc.ClientConn
 }
 
 func NewBreakerClient(
@@ -26,7 +30,16 @@ func NewBreakerClient(
 	if err != nil {
 		return nil, err
 	}
-
+	grpcConn, err := grpc.Dial(
+		cfg.Cosmos.GRPCEndpoint, // your gRPC server address.
+		grpc.WithInsecure(),     // The Cosmos SDK doesn't support any transport security mechanism.
+		// This instantiates a general gRPC codec which handles proto bytes. We pass in a nil interface registry
+		// if the request/response types contain interface instead of 'nil' you should pass the application specific codec.
+		grpc.WithDefaultCallOptions(grpc.ForceCodec(codec.NewProtoCodec(nil).GRPCCodec())),
+	)
+	if err != nil {
+		return nil, err
+	}
 	flagSet := pflag.NewFlagSet("", pflag.ExitOnError)
 	ctx := cfg.ClientContext()
 	ctx, err = client.ReadPersistentCommandFlags(ctx, flagSet)
@@ -34,6 +47,7 @@ func NewBreakerClient(
 		return nil, err
 	}
 	ctx = ctx.WithClient(rc)
+	ctx = ctx.WithGRPCClient(grpcConn)
 	qc := types.NewQueryClient(ctx)
 	fc, err := tx.NewFactoryCLI(ctx, flagSet)
 	if err != nil {
@@ -44,7 +58,12 @@ func NewBreakerClient(
 		rc,
 		qc,
 		fc,
+		grpcConn,
 	}, nil
+}
+
+func (bc *BreakerClient) Close() error {
+	return bc.gprcConn.Close()
 }
 
 func (bc *BreakerClient) ListDisabledCommands(ctx context.Context) (*types.DisabledListResponse, error) {
