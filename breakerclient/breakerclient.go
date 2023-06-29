@@ -4,68 +4,79 @@ import (
 	"context"
 	"fmt"
 
-	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
+	"github.com/spf13/pflag"
+	lens "github.com/strangelove-ventures/lens/client"
 
 	"cosmossdk.io/x/circuit/types"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/tx"
-	"github.com/cosmos/cosmos-sdk/codec"
-	"github.com/spf13/pflag"
 	config "github.com/teamscanworks/breaker/config"
-	"google.golang.org/grpc"
 )
 
 type BreakerClient struct {
-	ctx      client.Context
-	rc       *rpchttp.HTTP
-	qc       types.QueryClient
-	fc       tx.Factory
-	gprcConn *grpc.ClientConn
-	flagSet  *pflag.FlagSet
+	ctx       context.Context
+	cancel    context.CancelFunc
+	clientCtx client.Context
+	lc        *lens.ChainClient
+	qc        types.QueryClient
+	fc        tx.Factory
+	flagSet   *pflag.FlagSet
 }
 
 func NewBreakerClient(
+	ctx context.Context,
 	cfg config.Config,
 ) (*BreakerClient, error) {
-	rc, err := client.NewClientFromNode(cfg.Cosmos.RPCEndpoint)
+	ctx, cancel := context.WithCancel(ctx)
+	logger, err := cfg.ZapLogger()
 	if err != nil {
 		return nil, err
 	}
-	grpcConn, err := grpc.Dial(
-		cfg.Cosmos.GRPCEndpoint, // your gRPC server address.
-		grpc.WithInsecure(),     // The Cosmos SDK doesn't support any transport security mechanism.
-		// This instantiates a general gRPC codec which handles proto bytes. We pass in a nil interface registry
-		// if the request/response types contain interface instead of 'nil' you should pass the application specific codec.
-		grpc.WithDefaultCallOptions(grpc.ForceCodec(codec.NewProtoCodec(nil).GRPCCodec())),
-	)
+	chainConfig := cfg.ChainClientConfig()
+	lc, err := cfg.ChainClient(logger, &chainConfig)
 	if err != nil {
 		return nil, err
 	}
+	fc := lc.TxFactory()
+	//rc, err := client.NewClientFromNode(cfg.Cosmos.RPCEndpoint)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//grpcConn, err := grpc.Dial(
+	//	cfg.Cosmos.GRPCEndpoint, // your gRPC server address.
+	//	grpc.WithInsecure(),     // The Cosmos SDK doesn't support any transport security mechanism.
+	//	// This instantiates a general gRPC codec which handles proto bytes. We pass in a nil interface registry
+	//	// if the request/response types contain interface instead of 'nil' you should pass the application specific codec.
+	//	grpc.WithDefaultCallOptions(grpc.ForceCodec(codec.NewProtoCodec(nil).GRPCCodec())),
+	//)
+	//if err != nil {
+	//	return nil, err
+	//}
 	flagSet := pflag.NewFlagSet("", pflag.ExitOnError)
-	ctx := cfg.ClientContext()
-	ctx, err = client.ReadPersistentCommandFlags(ctx, flagSet)
-	if err != nil {
-		return nil, err
-	}
-	ctx = ctx.WithClient(rc)
-	ctx = ctx.WithGRPCClient(grpcConn)
-	qc := types.NewQueryClient(ctx)
-	fc, err := tx.NewFactoryCLI(ctx, flagSet)
-	if err != nil {
-		return nil, err
-	}
+	clientCtx := cfg.ClientContext()
+	clientCtx = clientCtx.WithClient(lc.RPCClient)
+	//ctx, err = client.ReadPersistentCommandFlags(ctx, flagSet)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//ctx = ctx.WithClient(rc)
+	//ctx = ctx.WithGRPCClient(grpcConn)
+	qc := types.NewQueryClient(clientCtx)
+
 	return &BreakerClient{
 		ctx,
-		rc,
+		cancel,
+		clientCtx,
+		lc,
 		qc,
 		fc,
-		grpcConn,
 		flagSet,
 	}, nil
 }
 
 func (bc *BreakerClient) Close() error {
-	return bc.gprcConn.Close()
+	bc.cancel()
+	return nil
 }
 
 func (bc *BreakerClient) ListDisabledCommands(ctx context.Context) (*types.DisabledListResponse, error) {
@@ -93,24 +104,24 @@ func (bc *BreakerClient) Authorize(ctx context.Context, grantee string, permissi
 		Level:         types.Permissions_Level(val),
 		LimitTypeUrls: limitTypeUrls,
 	}
-	msg := types.NewMsgAuthorizeCircuitBreaker(bc.ctx.GetFromAddress().String(), grantee, &permission)
-	if err := tx.BroadcastTx(bc.ctx, bc.fc, msg); err != nil {
+	msg := types.NewMsgAuthorizeCircuitBreaker(bc.clientCtx.GetFromAddress().String(), grantee, &permission)
+	if err := tx.BroadcastTx(bc.clientCtx, bc.fc, msg); err != nil {
 		return fmt.Errorf("failed to broadcast transaction %v", err)
 	}
 	return nil
 }
 
 func (bc *BreakerClient) TripCircuitBreaker(ctx context.Context, urls []string) error {
-	msg := types.NewMsgTripCircuitBreaker(bc.ctx.GetFromAddress().String(), urls)
-	if err := tx.BroadcastTx(bc.ctx, bc.fc, msg); err != nil {
+	msg := types.NewMsgTripCircuitBreaker(bc.clientCtx.GetFromAddress().String(), urls)
+	if err := tx.BroadcastTx(bc.clientCtx, bc.fc, msg); err != nil {
 		return fmt.Errorf("failed to broadcast transaction %v", err)
 	}
 	return nil
 }
 
 func (bc *BreakerClient) ResetCircuitBreaker(ctx context.Context, urls []string) error {
-	msg := types.NewMsgResetCircuitBreaker(bc.ctx.GetFromAddress().String(), urls)
-	if err := tx.BroadcastTx(bc.ctx, bc.fc, msg); err != nil {
+	msg := types.NewMsgResetCircuitBreaker(bc.clientCtx.GetFromAddress().String(), urls)
+	if err := tx.BroadcastTx(bc.clientCtx, bc.fc, msg); err != nil {
 		return fmt.Errorf("failed to broadcast transaction %v", err)
 	}
 	return nil

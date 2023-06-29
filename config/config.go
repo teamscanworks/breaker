@@ -1,8 +1,11 @@
 package config
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
+
+	lens "github.com/strangelove-ventures/lens/client"
 
 	"github.com/cosmos/cosmos-sdk/client"
 	"go.uber.org/zap"
@@ -14,6 +17,7 @@ var (
 		Cosmos: Cosmos{
 			RPCEndpoint:  "http://127.0.0.1:1317",
 			GRPCEndpoint: "127.0.0.1:9090",
+			ChaindID:     "1234",
 			PrivateKey:   "",
 		},
 		MonitoringAPI: MonitoringAPI{
@@ -44,6 +48,7 @@ type Cosmos struct {
 	GRPCEndpoint string `yaml:"grpc_endpoint"`
 	// hex encoded private key used for signing transactions
 	PrivateKey string     `yaml:"private_key"`
+	ChaindID   string     `yaml:"chain_id"`
 	Options    CosmosOpts `yaml:"options"`
 }
 
@@ -113,4 +118,30 @@ func (c *Config) ClientContext() client.Context {
 		ctx = ctx.WithKeyringDir(c.Cosmos.Options.KeyringDir)
 	}
 	return ctx
+}
+
+func (c *Config) ChainClientConfig() lens.ChainClientConfig {
+	return lens.ChainClientConfig{
+		Key:            "default", // todo: enable customization
+		ChainID:        c.Cosmos.ChaindID,
+		RPCAddr:        c.Cosmos.RPCEndpoint,
+		GRPCAddr:       c.Cosmos.GRPCEndpoint,
+		AccountPrefix:  "cosmos", // todo: enable configuration
+		KeyringBackend: "os",
+		GasAdjustment:  1.2,
+		GasPrices:      "0.01uatom",
+		Debug:          true,  // todo: enable configuration
+		Timeout:        "20s", // todo: enable customization
+		OutputFormat:   "json",
+		SignModeStr:    "direct",
+		Modules:        lens.ModuleBasics,
+	}
+}
+
+func (c *Config) ChainClient(logger *zap.Logger, chainConfig *lens.ChainClientConfig) (*lens.ChainClient, error) {
+	lc, err := lens.NewChainClient(logger.Named("chain.client"), chainConfig, c.Cosmos.Options.HomeDir, os.Stdin, os.Stdout)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize chain client %s", err)
+	}
+	return lc, nil
 }
