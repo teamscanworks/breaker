@@ -29,4 +29,8 @@ func TestBreakerClientNew(t *testing.T) {
 	require.Len(t, disabledCmds.DisabledList, 0)
 
 	require.NoError(t, bc.TripCircuitBreaker(ctx, []string{"foobar"}))
+
+	disabledCmds, err = bc.ListDisabledCommands(ctx)
+	require.NoError(t, err)
+	require.Len(t, disabledCmds.DisabledList, 1)
 }

@@ -18,7 +18,7 @@ func TestConfigFile(t *testing.T) {
 	require.Error(t, err)
 	cfg, err := LoadConfig("config.yaml")
 	require.NoError(t, err)
-	require.Equal(t, cfg.MonitoringAPI.ListenAddress, "http://127.0.0.1:26657")
+	require.Equal(t, cfg.MonitoringAPI.ListenAddress, "127.0.0.1:3070")
 	require.Equal(t, cfg.Cosmos.RPCEndpoint, "http://127.0.0.1:1317")
 	require.Equal(t, cfg.Cosmos.GRPCEndpoint, "127.0.0.1:9090")
 	logger, err := cfg.ZapLogger()
