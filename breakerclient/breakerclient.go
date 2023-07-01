@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/pflag"
-	lens "github.com/strangelove-ventures/lens/client"
+	lens "github.com/teamscanworks/breaker/client"
 
 	"cosmossdk.io/x/circuit/types"
 	"github.com/cosmos/cosmos-sdk/client"

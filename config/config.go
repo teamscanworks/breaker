@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	lens "github.com/strangelove-ventures/lens/client"
+	lens "github.com/teamscanworks/breaker/client"
 
 	"github.com/cosmos/cosmos-sdk/client"
 	"go.uber.org/zap"

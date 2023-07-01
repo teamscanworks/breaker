@@ -4,9 +4,8 @@ go 1.20
 
 require (
 	cosmossdk.io/x/circuit v0.0.0-20230627191131-1fd25ac41c77
-	github.com/cosmos/cosmos-sdk v0.46.4
+	github.com/cosmos/cosmos-sdk v0.47.3
 	github.com/spf13/pflag v1.0.5
-	github.com/strangelove-ventures/lens v0.6.0
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/zap v1.24.0
 	gopkg.in/yaml.v2 v2.4.0
@@ -18,7 +17,7 @@ require (
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	cloud.google.com/go/iam v0.13.0 // indirect
 	cloud.google.com/go/storage v1.29.0 // indirect
-	cosmossdk.io/api v0.4.2 // indirect
+	cosmossdk.io/api v0.5.0 // indirect
 	cosmossdk.io/collections v0.2.1-0.20230620134406-d4f1e88b6531 // indirect
 	cosmossdk.io/core v0.8.0 // indirect
 	cosmossdk.io/depinject v1.0.0-alpha.3 // indirect
@@ -58,6 +57,7 @@ require (
 	github.com/cosmos/gorocksdb v1.2.0 // indirect
 	github.com/cosmos/iavl v1.0.0-beta.2 // indirect
 	github.com/cosmos/ibc-go/v5 v5.1.0 // indirect
+	github.com/cosmos/ibc-go/v7 v7.0.0-20230630142856-445187e4cc70 // indirect
 	github.com/cosmos/ics23/go v0.10.0 // indirect
 	github.com/cosmos/ledger-cosmos-go v0.13.0 // indirect
 	github.com/danieljoos/wincred v1.1.2 // indirect
