@@ -27,6 +27,7 @@ func NewBreakerClient(
 	ctx, cancel := context.WithCancel(ctx)
 	cl, err := compass.NewClient(log, cfg)
 	if err != nil {
+		cancel()
 		return nil, err
 	}
 	qc := types.NewQueryClient(cl.GRPC)
