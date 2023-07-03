@@ -5,6 +5,7 @@ go 1.20
 require (
 	cosmossdk.io/x/circuit v0.0.0-20230630170903-8c72f66396ff
 	github.com/cosmos/cosmos-sdk v0.46.0-beta2.0.20230630170903-8c72f66396ff
+	github.com/go-chi/chi/v5 v5.0.9-0.20230502103705-7f280968675b
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.4
 	github.com/teamscanworks/compass v0.0.0-20230703032833-b59b78360dd1
