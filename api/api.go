@@ -7,16 +7,18 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/jwtauth/v5"
+	"github.com/teamscanworks/breaker/breakerclient"
 	"go.uber.org/zap"
 )
 
 type API struct {
-	ctx    context.Context
-	cancel context.CancelFunc
-	router chi.Router
-	logger *zap.Logger
-	jwt    *JWT
-	addr   string
+	ctx           context.Context
+	cancel        context.CancelFunc
+	router        chi.Router
+	logger        *zap.Logger
+	jwt           *JWT
+	breakerClient *breakerclient.BreakerClient
+	addr          string
 	// if true, do not invoke any cosmos transactions
 	dryRun bool
 	// todo: add basic cache for pushed metrics
@@ -48,6 +50,10 @@ func NewAPI(
 		r.Post("/webhook", api.HandleWebookV1)
 	})
 	return &api, nil
+}
+
+func (api *API) WithBreakerClient(client *breakerclient.BreakerClient) {
+	api.breakerClient = client
 }
 
 func (api *API) Close() {

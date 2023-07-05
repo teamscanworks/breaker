@@ -55,7 +55,6 @@ func (jt *JWT) CheckToken(token jwt.Token) error {
 		if err != nil {
 			return fmt.Errorf("failed to parse token to map")
 		}
-		fmt.Println("identifier field ", tMap[jt.identifierField])
 		if tMap[jt.identifierField] == nil {
 			return fmt.Errorf("failed to parse token map for field %s", jt.identifierField)
 		}

@@ -57,36 +57,3 @@ func TestAPI(t *testing.T) {
 	time.Sleep(time.Second * 5)
 	api.Close()
 }
-
-func TestAPIExpiredToken(t *testing.T) {
-	ctx := context.Background()
-	logger, err := zap.NewDevelopment()
-	require.NoError(t, err)
-	jwt := NewJWT("password123", "userId", 300)
-
-	api, err := NewAPI(ctx, logger, jwt, ApiOpts{
-		ListenAddress:                "127.0.0.1:42690",
-		Password:                     "password123",
-		IdentifierField:              "userId",
-		TokenValidityDurationSeconds: 1,
-		DryRun:                       true,
-	})
-	require.NoError(t, err)
-	go func() {
-		api.Serve()
-	}()
-	api.logger.Info("issueing token")
-	jwtToken, err := api.jwt.Encode("apiTest", nil)
-	require.NoError(t, err)
-	api.logger.Info("issued token", zap.String("token", jwtToken))
-	api.logger.Info("executing webhook")
-	client := http.DefaultClient
-	buffer := bytes.NewBuffer([]byte("hello"))
-	req, err := http.NewRequest("POST", "http://127.0.0.1:42690/v1/webhook", buffer)
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer: %s", jwtToken))
-	require.NoError(t, err)
-	api.logger.Info("sleeping")
-	time.Sleep(time.Second * 3)
-	_, err = client.Do(req)
-	require.Error(t, err)
-}

@@ -30,5 +30,13 @@ func (api *API) HandleWebookV1(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("dry run, skipping transaction invocation"))
 		return
 	}
-	w.Write([]byte("TODO"))
+	if api.breakerClient == nil {
+		http.Error(w, "no initialized breaker client", http.StatusInternalServerError)
+		return
+	}
+	if err := api.breakerClient.TripCircuitBreaker(r.Context(), payload.Urls); err != nil {
+		api.logger.Error("failed to trip circuit breaker", zap.Error(err))
+	} else {
+		api.logger.Info("tripped circuit", zap.Any("urls", payload.Urls))
+	}
 }
