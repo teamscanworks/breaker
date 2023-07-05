@@ -98,6 +98,15 @@ func TestAPI(t *testing.T) {
 	api.logger.Info("issued token", zap.String("token", jwtToken))
 	client := http.DefaultClient
 
+	t.Run("/v1/status/listDisabledCommands", func(t *testing.T) {
+		req, err := http.NewRequest("GET", "http://127.0.0.1:42690/v1/status/listDisabledCommands", nil)
+		require.NoError(t, err)
+		res, err := client.Do(req)
+		require.NoError(t, err)
+		data, err := ioutil.ReadAll(res.Body)
+		require.NoError(t, err)
+		t.Log("response ", string(data))
+	})
 	t.Run("/v1/webhook", func(t *testing.T) {
 		api.logger.Info("executing webhook")
 		payload := Payload{
@@ -115,15 +124,6 @@ func TestAPI(t *testing.T) {
 		data, err = ioutil.ReadAll(res.Body)
 		require.NoError(t, err)
 		require.Equal(t, string(data), "dry run, skipping transaction invocation")
-	})
-	t.Run("/v1/status/listDisabledCommands", func(t *testing.T) {
-		req, err := http.NewRequest("GET", "http://127.0.0.1:42690/v1/status/listDisabledCommands", nil)
-		require.NoError(t, err)
-		res, err := client.Do(req)
-		require.NoError(t, err)
-		data, err := ioutil.ReadAll(res.Body)
-		require.NoError(t, err)
-		t.Log("response ", string(data))
 	})
 	api.logger.Info("sleeping")
 	time.Sleep(time.Second * 5)

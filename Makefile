@@ -1,3 +1,7 @@
+.PHONY: build
+build:
+	go build -o breaker-cli .
+	
 .PHONY: install-simd
 install-simd:
 	git clone https://github.com/cosmos/cosmos-sdk
