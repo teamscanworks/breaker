@@ -8,7 +8,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// porter from warp
+// provides a wrapper around zap.Logger that can be used as a http middleware
 
 type loggerMiddleware struct {
 	l *zap.Logger

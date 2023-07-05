@@ -10,6 +10,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 )
 
+// exposes convenience functions for issueing and parsing JWTs
 type JWT struct {
 	tokenAuth           *jwtauth.JWTAuth
 	identifierField     string
@@ -24,6 +25,7 @@ func NewJWT(password string, identifierField string, tokenValidityDurationSec in
 	}
 }
 
+// issues a new jwt adding the given identifier and extra fields to the claims
 func (jwt *JWT) Encode(identifier string, extraFields map[string]interface{}) (string, error) {
 	if extraFields == nil {
 		extraFields = make(map[string]interface{}, 3)
@@ -42,10 +44,12 @@ func (jwt *JWT) Encode(identifier string, extraFields map[string]interface{}) (s
 	return encoded, nil
 }
 
+// parses an encoded jwt
 func (jwt *JWT) Decode(ctx context.Context, token string) (jwt.Token, error) {
 	return jwt.tokenAuth.Decode(token)
 }
 
+// used to perform validation of the jwt token, and identifier fields
 func (jt *JWT) CheckToken(token jwt.Token) error {
 	if token == nil || jwt.Validate(token) != nil {
 		return fmt.Errorf("failed to validate token")

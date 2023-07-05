@@ -59,14 +59,18 @@ func NewAPI(
 	return &api, nil
 }
 
+// sets the breakerClient field, needed for non dry-run webhook calls, as well as the status calls
 func (api *API) WithBreakerClient(client *breakerclient.BreakerClient) {
 	api.breakerClient = client
 }
 
+// cancels the api context, triggering a shutdown of the api router
+// if `api.Server` has been called
 func (api *API) Close() {
 	api.cancel()
 }
 
+// blocking call that starts a http server exposing the api
 func (api *API) Serve() error {
 	server := http.Server{
 		Addr:    api.addr,
