@@ -2,7 +2,11 @@ package cli
 
 import (
 	"fmt"
+	"os"
 
+	"github.com/cosmos/cosmos-sdk/crypto/hd"
+	"github.com/cosmos/cosmos-sdk/crypto/keyring"
+	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/teamscanworks/breaker/api"
 	"github.com/teamscanworks/breaker/breakerclient"
 	"github.com/teamscanworks/breaker/config"
@@ -20,6 +24,10 @@ func RunCLI() {
 			Usage: "path to yaml configuration file",
 			Value: "config.yaml",
 		},
+		&cli.BoolFlag{
+			Name:  "debug.log",
+			Usage: "enable debug logging",
+		},
 	}
 	app.Commands = []*cli.Command{
 		&cli.Command{
@@ -35,7 +43,7 @@ func RunCLI() {
 						if err != nil {
 							return err
 						}
-						logger, err := cfg.ZapLogger()
+						logger, err := cfg.ZapLogger(cCtx.Bool("debug.log"))
 						if err != nil {
 							return err
 						}
@@ -75,7 +83,7 @@ func RunCLI() {
 							return err
 						}
 						apiOpts := cfg.ApiOpts(dryRun)
-						logger, err := cfg.ZapLogger()
+						logger, err := cfg.ZapLogger(cCtx.Bool("debug.log"))
 						if err != nil {
 							return err
 						}
@@ -132,8 +140,36 @@ func RunCLI() {
 							Name:  "key.name",
 							Usage: "name to refer to the keypair with",
 						},
+						&cli.BoolFlag{
+							Name:  "create.mnemonic",
+							Usage: "if present, create a keypair via a new mnemonic phrase",
+						},
 					},
 					Action: func(cCtx *cli.Context) error {
+						cfgPath := cCtx.String("config.path")
+						cfg, err := config.LoadConfig(cfgPath)
+						if err != nil {
+							return err
+						}
+						logger, err := cfg.ZapLogger(cCtx.Bool("debug.log"))
+						if err != nil {
+							return err
+						}
+						bc, err := breakerclient.NewBreakerClient(cCtx.Context, logger, &cfg.Compass)
+						if err != nil {
+							return err
+						}
+						if cCtx.Bool("create.mnemonic") {
+							logger.Info("creating mnemonic")
+							keyRecord, keyInfo, err := bc.NewMnemonic(cCtx.String("key.name"), keyring.English, sdktypes.FullFundraiserPath, keyring.DefaultBIP39Passphrase, hd.Secp256k1)
+							if err != nil {
+								return err
+							}
+							logger.Info("key.info", zap.Any("key.info", keyInfo))
+							_ = keyRecord
+						} else {
+							return fmt.Errorf("invalid options")
+						}
 						fmt.Println("todo")
 						return nil
 					},
@@ -154,5 +190,8 @@ func RunCLI() {
 				},
 			},
 		},
+	}
+	if err := app.Run(os.Args); err != nil {
+		panic(err)
 	}
 }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/tx"
+	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/spf13/pflag"
 	compass "github.com/teamscanworks/compass"
 	"go.uber.org/zap"
@@ -128,4 +129,9 @@ func (bc *BreakerClient) ResetCircuitBreaker(ctx context.Context, urls []string)
 		return fmt.Errorf("failed to broadcast transaction %v", err)
 	}
 	return nil
+}
+
+// creates a new mnemonic phrase and inserts into the keyring
+func (bc *BreakerClient) NewMnemonic(userId string, language keyring.Language, path string, password string, algo keyring.SignatureAlgo) (*keyring.Record, string, error) {
+	return bc.Client.Keyring.NewMnemonic(userId, language, path, password, algo)
 }

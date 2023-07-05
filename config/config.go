@@ -4,9 +4,11 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/99designs/keyring"
 	"github.com/teamscanworks/breaker/api"
 	"github.com/teamscanworks/compass"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"gopkg.in/yaml.v2"
 )
 
@@ -62,7 +64,12 @@ func LoadConfig(path string) (*Configuration, error) {
 }
 
 // make sure to call `logger.Sync()` at somepoint before exiting
-func (c *Configuration) ZapLogger() (*zap.Logger, error) {
+func (c *Configuration) ZapLogger(debug bool) (*zap.Logger, error) {
+	conf := zap.NewProductionConfig()
+	if debug {
+		conf.Level = zap.NewAtomicLevelAt(zapcore.DebugLevel)
+		keyring.Debug = true
+	}
 	logger, err := zap.NewProduction()
 	return logger, err
 }
