@@ -6,12 +6,11 @@ require (
 	cosmossdk.io/x/circuit v0.0.0-20230630170903-8c72f66396ff
 	github.com/cosmos/cosmos-sdk v0.46.0-beta2.0.20230630170903-8c72f66396ff
 	github.com/go-chi/chi/v5 v5.0.9-0.20230502103705-7f280968675b
-	github.com/go-chi/jwtauth v1.2.0
 	github.com/go-chi/jwtauth/v5 v5.1.1
 	github.com/lestrrat-go/jwx/v2 v2.0.11
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.4
-	github.com/teamscanworks/compass v0.0.0-20230703032833-b59b78360dd1
+	github.com/teamscanworks/compass v0.0.0-20230705054453-ed446dca9712
 	go.uber.org/zap v1.24.0
 )
 
@@ -99,12 +98,10 @@ require (
 	github.com/klauspost/compress v1.16.5 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/lestrrat-go/backoff/v2 v2.0.7 // indirect
 	github.com/lestrrat-go/blackmagic v1.0.1 // indirect
 	github.com/lestrrat-go/httpcc v1.0.1 // indirect
 	github.com/lestrrat-go/httprc v1.0.4 // indirect
 	github.com/lestrrat-go/iter v1.0.2 // indirect
-	github.com/lestrrat-go/jwx v1.1.0 // indirect
 	github.com/lestrrat-go/option v1.0.1 // indirect
 	github.com/libp2p/go-buffer-pool v0.1.0 // indirect
 	github.com/linxGnu/grocksdb v1.8.0 // indirect
