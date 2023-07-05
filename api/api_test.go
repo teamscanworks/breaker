@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"testing"
 	"time"
 
@@ -17,6 +18,9 @@ import (
 )
 
 func TestAPIDryRun(t *testing.T) {
+	t.Cleanup(func() {
+		os.RemoveAll("keyring-test")
+	})
 	ctx := context.Background()
 	logger, err := zap.NewDevelopment()
 	require.NoError(t, err)
@@ -37,30 +41,36 @@ func TestAPIDryRun(t *testing.T) {
 	jwtToken, err := api.jwt.Encode("apiTest", nil)
 	require.NoError(t, err)
 	api.logger.Info("issued token", zap.String("token", jwtToken))
-	api.logger.Info("executing webhook")
 	client := http.DefaultClient
-	payload := Payload{
-		Urls:    []string{"/cosmos/apiv1"},
-		Message: "amount > 1000",
-	}
-	data, err := json.Marshal(&payload)
-	require.NoError(t, err)
-	buffer := bytes.NewBuffer(data)
-	req, err := http.NewRequest("POST", "http://127.0.0.1:42690/v1/webhook", buffer)
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer: %s", jwtToken))
-	require.NoError(t, err)
-	res, err := client.Do(req)
-	require.NoError(t, err)
-	data, err = ioutil.ReadAll(res.Body)
-	require.NoError(t, err)
-	require.Equal(t, string(data), "dry run, skipping transaction invocation")
 
+	t.Run("/v1/webhook", func(t *testing.T) {
+		api.logger.Info("executing webhook")
+		payload := Payload{
+			Urls:    []string{"/cosmos/apiv1"},
+			Message: "amount > 1000",
+		}
+		data, err := json.Marshal(&payload)
+		require.NoError(t, err)
+		buffer := bytes.NewBuffer(data)
+		req, err := http.NewRequest("POST", "http://127.0.0.1:42690/v1/webhook", buffer)
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer: %s", jwtToken))
+		require.NoError(t, err)
+		res, err := client.Do(req)
+		require.NoError(t, err)
+		data, err = ioutil.ReadAll(res.Body)
+		require.NoError(t, err)
+		require.Equal(t, string(data), "dry run, skipping transaction invocation")
+	})
 	api.logger.Info("sleeping")
 	time.Sleep(time.Second * 5)
 	api.Close()
 }
 
 func TestAPI(t *testing.T) {
+	t.Cleanup(func() {
+		os.RemoveAll("keyring-test")
+	})
+	t.Log("TODO: synchronize keyring with the simd environment")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	logger, err := zap.NewDevelopment()
@@ -79,7 +89,6 @@ func TestAPI(t *testing.T) {
 	})
 	require.NoError(t, err)
 	api.WithBreakerClient(breaker)
-	t.Log("TODO: synchronize keyring with the simd environment")
 	go func() {
 		api.Serve()
 	}()
@@ -87,24 +96,35 @@ func TestAPI(t *testing.T) {
 	jwtToken, err := api.jwt.Encode("apiTest", nil)
 	require.NoError(t, err)
 	api.logger.Info("issued token", zap.String("token", jwtToken))
-	api.logger.Info("executing webhook")
 	client := http.DefaultClient
-	payload := Payload{
-		Urls:    []string{"/cosmos/apiv1"},
-		Message: "amount > 1000",
-	}
-	data, err := json.Marshal(&payload)
-	require.NoError(t, err)
-	buffer := bytes.NewBuffer(data)
-	req, err := http.NewRequest("POST", "http://127.0.0.1:42690/v1/webhook", buffer)
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer: %s", jwtToken))
-	require.NoError(t, err)
-	res, err := client.Do(req)
-	require.NoError(t, err)
-	data, err = ioutil.ReadAll(res.Body)
-	require.NoError(t, err)
-	require.Equal(t, string(data), "dry run, skipping transaction invocation")
 
+	t.Run("/v1/webhook", func(t *testing.T) {
+		api.logger.Info("executing webhook")
+		payload := Payload{
+			Urls:    []string{"/cosmos/apiv1"},
+			Message: "amount > 1000",
+		}
+		data, err := json.Marshal(&payload)
+		require.NoError(t, err)
+		buffer := bytes.NewBuffer(data)
+		req, err := http.NewRequest("POST", "http://127.0.0.1:42690/v1/webhook", buffer)
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer: %s", jwtToken))
+		require.NoError(t, err)
+		res, err := client.Do(req)
+		require.NoError(t, err)
+		data, err = ioutil.ReadAll(res.Body)
+		require.NoError(t, err)
+		require.Equal(t, string(data), "dry run, skipping transaction invocation")
+	})
+	t.Run("/v1/status/listDisabledCommands", func(t *testing.T) {
+		req, err := http.NewRequest("GET", "http://127.0.0.1:42690/v1/status/listDisabledCommands", nil)
+		require.NoError(t, err)
+		res, err := client.Do(req)
+		require.NoError(t, err)
+		data, err := ioutil.ReadAll(res.Body)
+		require.NoError(t, err)
+		t.Log("response ", string(data))
+	})
 	api.logger.Info("sleeping")
 	time.Sleep(time.Second * 5)
 	api.Close()
