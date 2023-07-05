@@ -6,6 +6,9 @@ require (
 	cosmossdk.io/x/circuit v0.0.0-20230630170903-8c72f66396ff
 	github.com/cosmos/cosmos-sdk v0.46.0-beta2.0.20230630170903-8c72f66396ff
 	github.com/go-chi/chi/v5 v5.0.9-0.20230502103705-7f280968675b
+	github.com/go-chi/jwtauth v1.2.0
+	github.com/go-chi/jwtauth/v5 v5.1.1
+	github.com/lestrrat-go/jwx/v2 v2.0.11
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.4
 	github.com/teamscanworks/compass v0.0.0-20230703032833-b59b78360dd1
@@ -65,6 +68,7 @@ require (
 	github.com/go-kit/kit v0.12.0 // indirect
 	github.com/go-kit/log v0.2.1 // indirect
 	github.com/go-logfmt/logfmt v0.6.0 // indirect
+	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/godbus/dbus v0.0.0-20190726142602-4481cbc300e2 // indirect
 	github.com/gogo/googleapis v1.4.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
@@ -95,6 +99,13 @@ require (
 	github.com/klauspost/compress v1.16.5 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
+	github.com/lestrrat-go/backoff/v2 v2.0.7 // indirect
+	github.com/lestrrat-go/blackmagic v1.0.1 // indirect
+	github.com/lestrrat-go/httpcc v1.0.1 // indirect
+	github.com/lestrrat-go/httprc v1.0.4 // indirect
+	github.com/lestrrat-go/iter v1.0.2 // indirect
+	github.com/lestrrat-go/jwx v1.1.0 // indirect
+	github.com/lestrrat-go/option v1.0.1 // indirect
 	github.com/libp2p/go-buffer-pool v0.1.0 // indirect
 	github.com/linxGnu/grocksdb v1.8.0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
@@ -119,6 +130,7 @@ require (
 	github.com/rs/cors v1.8.3 // indirect
 	github.com/rs/zerolog v1.29.1 // indirect
 	github.com/sasha-s/go-deadlock v0.3.1 // indirect
+	github.com/segmentio/asm v1.2.0 // indirect
 	github.com/spf13/afero v1.9.5 // indirect
 	github.com/spf13/cast v1.5.1 // indirect
 	github.com/spf13/cobra v1.7.0 // indirect
