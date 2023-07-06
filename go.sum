@@ -788,6 +788,12 @@ github.com/teamscanworks/compass v0.0.0-20230706000445-db75869a9972 h1:BCkABiYMy
 github.com/teamscanworks/compass v0.0.0-20230706000445-db75869a9972/go.mod h1:d84kGnKbd8rUxw2qILdsP0eVP6JCcXPXcAvlEKoUOQc=
 github.com/teamscanworks/compass v0.0.0-20230706002039-bb4616164d95 h1:iLy5/IHYtJYiN3K+nqTW7/WMLyN92UM+Rh2QZDgg5mg=
 github.com/teamscanworks/compass v0.0.0-20230706002039-bb4616164d95/go.mod h1:d84kGnKbd8rUxw2qILdsP0eVP6JCcXPXcAvlEKoUOQc=
+github.com/teamscanworks/compass v0.0.0-20230706012537-25937e693e56 h1:G4Uo3JRMkyRDjpUAl5WNQxksP7zYksaWk6+IggnMzIE=
+github.com/teamscanworks/compass v0.0.0-20230706012537-25937e693e56/go.mod h1:d84kGnKbd8rUxw2qILdsP0eVP6JCcXPXcAvlEKoUOQc=
+github.com/teamscanworks/compass v0.0.0-20230706012735-e7241b8461a7 h1:yM+70WqfBEYrpVYTxTWn8ven6mzN5Q5Vohwqv1ufdyw=
+github.com/teamscanworks/compass v0.0.0-20230706012735-e7241b8461a7/go.mod h1:d84kGnKbd8rUxw2qILdsP0eVP6JCcXPXcAvlEKoUOQc=
+github.com/teamscanworks/compass v0.0.0-20230706013203-3802c4524650 h1:cFJfZMIWNwgHq9OHu3UllGF0GdIFUCIapxb940ytKmg=
+github.com/teamscanworks/compass v0.0.0-20230706013203-3802c4524650/go.mod h1:d84kGnKbd8rUxw2qILdsP0eVP6JCcXPXcAvlEKoUOQc=
 github.com/tecbot/gorocksdb v0.0.0-20191217155057-f0fad39f321c h1:g+WoO5jjkqGAzHWCjJB1zZfXPIAaDpzXIEJ0eS6B5Ok=
 github.com/tecbot/gorocksdb v0.0.0-20191217155057-f0fad39f321c/go.mod h1:ahpPrc7HpcfEWDQRZEmnXMzHY03mLDYMCxeDzy46i+8=
 github.com/tendermint/go-amino v0.16.0 h1:GyhmgQKvqF82e2oZeuMSp9JTN0N09emoSZlb2lyGa2E=

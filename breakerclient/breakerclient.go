@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"cosmossdk.io/x/circuit"
 	"cosmossdk.io/x/circuit/types"
 
 	"github.com/cosmos/cosmos-sdk/client"
@@ -35,7 +36,9 @@ func NewBreakerClient(
 	cfg *compass.ClientConfig,
 ) (*BreakerClient, error) {
 	ctx, cancel := context.WithCancel(ctx)
+	// set default modules, and register the circuit breaker type
 	cfg.Modules = compass.ModuleBasics
+	cfg.Modules = append(cfg.Modules, circuit.AppModuleBasic{})
 	cl, err := compass.NewClient(log, cfg, []keyring.Option{compass.DefaultSignatureOptions()})
 	if err != nil {
 		cancel()
@@ -61,6 +64,8 @@ func NewBreakerClient(
 	return bc, nil
 }
 
+// helper function that attempts to set the address used by the client context for signing transactions
+// logs a warning if no keys are configured, otherwise takes the first available key
 func (bc *BreakerClient) SetFromAddress() error {
 	keys, err := bc.Client.Keyring.List()
 	if err != nil {

@@ -11,7 +11,7 @@ require (
 	github.com/lestrrat-go/jwx/v2 v2.0.11
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.4
-	github.com/teamscanworks/compass v0.0.0-20230706002039-bb4616164d95
+	github.com/teamscanworks/compass v0.0.0-20230706013203-3802c4524650
 	github.com/urfave/cli/v2 v2.25.7
 	go.uber.org/zap v1.24.0
 	gopkg.in/yaml.v2 v2.4.0
