@@ -11,6 +11,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// Http api that exposes x/circuit module functionality, primarily used to trip and reset circuits
 type API struct {
 	ctx           context.Context
 	cancel        context.CancelFunc
@@ -21,7 +22,6 @@ type API struct {
 	addr          string
 	// if true, do not invoke any cosmos transactions
 	dryRun bool
-	// todo: add basic cache for pushed metrics
 }
 
 type ApiOpts struct {
@@ -32,6 +32,7 @@ type ApiOpts struct {
 	DryRun                       bool
 }
 
+// Prepares the http api server
 func NewAPI(
 	ctx context.Context,
 	log *zap.Logger,
@@ -46,12 +47,13 @@ func NewAPI(
 	api := API{ctx: ctx, cancel: cancel, router: r, jwt: NewJWT(opts.Password, opts.IdentifierField, opts.TokenValidityDurationSeconds), addr: opts.ListenAddress, logger: logger, dryRun: opts.DryRun}
 	api.router.Route("/v1", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
+			// authenticated urls
 			r.Use(jwtauth.Verifier(api.jwt.tokenAuth))
 			r.Use(api.jwt.Authenticator)
 			r.Post("/webhook", api.HandleWebookV1)
 		})
 		r.Group(func(r chi.Router) {
-			// status urls that can be used to return information
+			// unauthenticated urls
 			r.Get("/status/listDisabledCommands", api.ListDisabledCommands)
 			r.Get("/status/accounts", api.ListAccounts)
 		})
@@ -59,18 +61,17 @@ func NewAPI(
 	return &api, nil
 }
 
-// sets the breakerClient field, needed for non dry-run webhook calls, as well as the status calls
+// Sets the breakerClient field, needed for non dry-run webhook calls, as well as the status calls.
 func (api *API) WithBreakerClient(client *breakerclient.BreakerClient) {
 	api.breakerClient = client
 }
 
-// cancels the api context, triggering a shutdown of the api router
-// if `api.Server` has been called
+// Cancels the api context, triggering a shutdown of the api router.
 func (api *API) Close() {
 	api.cancel()
 }
 
-// blocking call that starts a http server exposing the api
+// Blocking call that starts a http server exposing the api.
 func (api *API) Serve() error {
 	server := http.Server{
 		Addr:    api.addr,

@@ -8,6 +8,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// Typed integer representing operations to apply against the circuit breaker module
 type Mode int
 
 const (
