@@ -4,9 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/cosmos/cosmos-sdk/crypto/hd"
-	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/teamscanworks/breaker/api"
 	"github.com/teamscanworks/breaker/breakerclient"
 	"github.com/teamscanworks/breaker/config"
@@ -161,12 +158,11 @@ func RunCLI() {
 						}
 						if cCtx.Bool("create.mnemonic") {
 							logger.Info("creating mnemonic")
-							keyRecord, keyInfo, err := bc.NewMnemonic(cCtx.String("key.name"), keyring.English, sdktypes.FullFundraiserPath, keyring.DefaultBIP39Passphrase, hd.Secp256k1)
+							mnemonic, err := bc.NewMnemonic(cCtx.String("key.name"))
 							if err != nil {
 								return err
 							}
-							logger.Info("key.info", zap.Any("key.info", keyInfo))
-							_ = keyRecord
+							logger.Info("key.info", zap.Any("key.mnemonic", mnemonic))
 						} else {
 							return fmt.Errorf("invalid options")
 						}

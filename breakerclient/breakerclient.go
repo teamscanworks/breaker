@@ -24,6 +24,7 @@ type BreakerClient struct {
 	qc        types.QueryClient
 	flagSet   *pflag.FlagSet
 	txFactory tx.Factory
+	log       *zap.Logger
 }
 
 // wraps the compass client with additional functionality specific to the x/circuit module
@@ -33,7 +34,8 @@ func NewBreakerClient(
 	cfg *compass.ClientConfig,
 ) (*BreakerClient, error) {
 	ctx, cancel := context.WithCancel(ctx)
-	cl, err := compass.NewClient(log, cfg)
+	cfg.Modules = compass.ModuleBasics
+	cl, err := compass.NewClient(log, cfg, []keyring.Option{compass.DefaultSignatureOptions()})
 	if err != nil {
 		cancel()
 		return nil, err
@@ -47,6 +49,7 @@ func NewBreakerClient(
 		qc:        qc,
 		flagSet:   pflag.NewFlagSet("", pflag.ExitOnError),
 		txFactory: txFactory,
+		log:       log.Named("breaker.client"),
 	}, nil
 }
 
@@ -132,6 +135,11 @@ func (bc *BreakerClient) ResetCircuitBreaker(ctx context.Context, urls []string)
 }
 
 // creates a new mnemonic phrase and inserts into the keyring
-func (bc *BreakerClient) NewMnemonic(userId string, language keyring.Language, path string, password string, algo keyring.SignatureAlgo) (*keyring.Record, string, error) {
-	return bc.Client.Keyring.NewMnemonic(userId, language, path, password, algo)
+func (bc *BreakerClient) NewMnemonic(keyName string) (string, error) {
+	keyOutput, err := bc.Client.KeyAddOrRestore(keyName, 118)
+	if err != nil {
+		bc.log.Error("failed to add new key", zap.Error(err))
+		return "", fmt.Errorf("failed to create new mnemonic %s", err)
+	}
+	return keyOutput.Mnemonic, nil
 }
