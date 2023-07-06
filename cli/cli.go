@@ -83,11 +83,13 @@ func RunCLI() {
 						dryRun := cCtx.Bool("dry.run")
 						cfg, err := config.LoadConfig(cfgPath)
 						if err != nil {
+							cancel()
 							return err
 						}
 						apiOpts := cfg.ApiOpts(dryRun)
 						logger, err := cfg.ZapLogger(cCtx.Bool("debug.log"))
 						if err != nil {
+							cancel()
 							return err
 						}
 						jwt := api.NewJWT(
@@ -102,6 +104,7 @@ func RunCLI() {
 							apiOpts,
 						)
 						if err != nil {
+							cancel()
 							return err
 						}
 						quitChannel := make(chan os.Signal, 1)

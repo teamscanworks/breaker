@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/99designs/keyring"
@@ -70,17 +69,17 @@ func NewConfig(path string, environment ...string) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(path, data, os.ModePerm)
+	return os.WriteFile(path, data, os.ModePerm)
 }
 
-// loads the configuration from `path` which must be saved as yaml file
+// Loads the configuration from `path` which must be saved as yaml file.
 func LoadConfig(path string) (*Configuration, error) {
 	var (
 		err error
 		dat []byte
 		cfg Configuration
 	)
-	dat, err = ioutil.ReadFile(path)
+	dat, err = os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -90,9 +89,9 @@ func LoadConfig(path string) (*Configuration, error) {
 	return &cfg, nil
 }
 
-// returns an initialized zap production logger, optionally with debug logs enabled
+// Returns an initialized zap production logger, optionally with debug logs enabled
 // you must call `logger.Sync()` once sometime before the process exits although
-// not doing is probably ok?
+// not doing is probably ok.
 func (c *Configuration) ZapLogger(debug bool) (*zap.Logger, error) {
 	conf := zap.NewProductionConfig()
 	if debug {
@@ -103,9 +102,8 @@ func (c *Configuration) ZapLogger(debug bool) (*zap.Logger, error) {
 	return logger, err
 }
 
-// returns an instance of the api options struct
-// if you want to initialize the api but not have it broadcast transactions
-// when a circuit is tripped set `dryRun` to true.
+// Returns an instance of the api options struct, which can be set to not broadcast
+// any transactions by setting `dryRun` to true.
 func (c *Configuration) ApiOpts(dryRun bool) api.ApiOpts {
 	return api.ApiOpts{
 		ListenAddress:                c.API.ListenAddress,

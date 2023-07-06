@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"testing"
@@ -48,22 +48,48 @@ func TestAPIDryRun(t *testing.T) {
 	client := http.DefaultClient
 
 	t.Run("v1/webhook", func(t *testing.T) {
-		api.logger.Info("executing webhook")
-		payload := Payload{
-			Urls:    []string{"/cosmos/apiv1"},
-			Message: "amount > 1000",
-		}
-		data, err := json.Marshal(&payload)
-		require.NoError(t, err)
-		buffer := bytes.NewBuffer(data)
-		req, err := http.NewRequest("POST", "http://127.0.0.1:42690/v1/webhook", buffer)
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer: %s", jwtToken))
-		require.NoError(t, err)
-		res, err := client.Do(req)
-		require.NoError(t, err)
-		data, err = ioutil.ReadAll(res.Body)
-		require.NoError(t, err)
-		require.Equal(t, string(data), "dry run, skipping transaction invocation")
+		t.Run("mode_reset", func(t *testing.T) {
+
+			api.logger.Info("executing webhook")
+			payload := PayloadV1{
+				Urls:      []string{"/cosmos/apiv1"},
+				Message:   "amount > 1000",
+				Operation: MODE_RESET,
+			}
+			data, err := json.Marshal(&payload)
+			require.NoError(t, err)
+			buffer := bytes.NewBuffer(data)
+			req, err := http.NewRequest("POST", "http://127.0.0.1:42690/v1/webhook", buffer)
+			req.Header.Set("Authorization", fmt.Sprintf("Bearer: %s", jwtToken))
+			require.NoError(t, err)
+			res, err := client.Do(req)
+			require.NoError(t, err)
+			data, err = io.ReadAll(res.Body)
+			require.NoError(t, err)
+			require.Equal(t, string(data), "dry run, skipping transaction invocation")
+
+		})
+		t.Run("mode_trip", func(t *testing.T) {
+
+			api.logger.Info("executing webhook")
+			payload := PayloadV1{
+				Urls:      []string{"/cosmos/apiv1"},
+				Message:   "amount > 1000",
+				Operation: MODE_TRIP,
+			}
+			data, err := json.Marshal(&payload)
+			require.NoError(t, err)
+			buffer := bytes.NewBuffer(data)
+			req, err := http.NewRequest("POST", "http://127.0.0.1:42690/v1/webhook", buffer)
+			req.Header.Set("Authorization", fmt.Sprintf("Bearer: %s", jwtToken))
+			require.NoError(t, err)
+			res, err := client.Do(req)
+			require.NoError(t, err)
+			data, err = io.ReadAll(res.Body)
+			require.NoError(t, err)
+			require.Equal(t, string(data), "dry run, skipping transaction invocation")
+
+		})
 	})
 	api.logger.Info("sleeping")
 	time.Sleep(time.Second * 5)
@@ -107,7 +133,7 @@ func TestAPI(t *testing.T) {
 
 	t.Run("v1/webhook", func(t *testing.T) {
 		api.logger.Info("executing webhook")
-		payload := Payload{
+		payload := PayloadV1{
 			Urls:    []string{"/cosmos/apiv1"},
 			Message: "amount > 1000",
 		}
@@ -119,7 +145,7 @@ func TestAPI(t *testing.T) {
 		require.NoError(t, err)
 		res, err := client.Do(req)
 		require.NoError(t, err)
-		data, err = ioutil.ReadAll(res.Body)
+		data, err = io.ReadAll(res.Body)
 		require.NoError(t, err)
 		_ = data
 	})

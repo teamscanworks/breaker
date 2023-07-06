@@ -44,7 +44,7 @@ type BreakerClient struct {
 	cancelFn  context.CancelFunc
 }
 
-// wraps the compass client with additional functionality specific to the x/circuit module
+// Wraps the compass client with additional functionality specific to the x/circuit module.
 func NewBreakerClient(
 	ctx context.Context,
 	log *zap.Logger,
@@ -54,11 +54,13 @@ func NewBreakerClient(
 	// set default modules, and register the circuit breaker type
 	cfg.Modules = compass.ModuleBasics
 	cfg.Modules = append(cfg.Modules, circuit.AppModuleBasic{})
+	// initialize compass client with default signature list
 	cl, err := compass.NewClient(log, cfg, []keyring.Option{compass.DefaultSignatureOptions()})
 	if err != nil {
 		cancel()
 		return nil, err
 	}
+	// initialize circuit breaker module specific clients
 	qc := types.NewQueryClient(cl.GRPC)
 	txFactory := cl.TxFactory()
 	cCtx := cl.ClientContext()
@@ -81,8 +83,8 @@ func NewBreakerClient(
 	return bc, nil
 }
 
-// helper function that attempts to set the address used by the client context for signing transactions
-// logs a warning if no keys are configured, otherwise takes the first available key
+// Helper function that attempts to set the address used by the client context for signing transactions
+// logs a warning if no keys are configured, otherwise takes the first available key.
 func (bc *BreakerClient) SetFromAddress() error {
 	keys, err := bc.Client.Keyring.List()
 	if err != nil {
@@ -101,17 +103,17 @@ func (bc *BreakerClient) SetFromAddress() error {
 	return nil
 }
 
-// lists commands/urls that have had their circuits tripped
+// Lists commands/urls that have had their circuits tripped.
 func (bc *BreakerClient) ListDisabledCommands(ctx context.Context) (*types.DisabledListResponse, error) {
 	return bc.qc.DisabledList(ctx, &types.QueryDisabledListRequest{})
 }
 
-// list permissions granted to the given address
+// List permissions granted to the given address.
 func (bc *BreakerClient) Account(ctx context.Context, address string) (*types.AccountResponse, error) {
 	return bc.qc.Account(ctx, &types.QueryAccountRequest{Address: address})
 }
 
-// returns a paginated list of all accounts that have permissions granted to them
+// Returns a paginated list of all accounts that have permissions granted to them.
 func (bc *BreakerClient) Accounts(ctx context.Context) (*types.AccountsResponse, error) {
 	page, err := client.ReadPageRequest(bc.flagSet)
 	if err != nil {
@@ -120,7 +122,7 @@ func (bc *BreakerClient) Accounts(ctx context.Context) (*types.AccountsResponse,
 	return bc.qc.Accounts(ctx, &types.QueryAccountsRequest{Pagination: page})
 }
 
-// authorize a given account with the specific permission level
+// Authorize a given account with the specific permission level.
 func (bc *BreakerClient) Authorize(ctx context.Context, grantee string, permissionLevel string, limitTypeUrls []string) error {
 	val, ok := types.Permissions_Level_value[permissionLevel]
 	if !ok {
@@ -139,7 +141,7 @@ func (bc *BreakerClient) Authorize(ctx context.Context, grantee string, permissi
 	return nil
 }
 
-// trip a circuit for the given urls, preventing calls to those module requests
+// Trip a circuit for the given urls, preventing calls to the module request urls.
 func (bc *BreakerClient) TripCircuitBreaker(ctx context.Context, urls []string) error {
 	granterAddr := bc.cCtx.GetFromAddress().String()
 	msg := types.NewMsgTripCircuitBreaker(granterAddr, urls)
@@ -150,7 +152,7 @@ func (bc *BreakerClient) TripCircuitBreaker(ctx context.Context, urls []string) 
 	return nil
 }
 
-// resets a tripped circuit, allowing calls to those module requests again
+// Resets a tripped circuit, allowing calls to the module request urls.
 func (bc *BreakerClient) ResetCircuitBreaker(ctx context.Context, urls []string) error {
 	granterAddr := bc.cCtx.GetFromAddress().String()
 	msg := types.NewMsgResetCircuitBreaker(granterAddr, urls)
@@ -161,7 +163,7 @@ func (bc *BreakerClient) ResetCircuitBreaker(ctx context.Context, urls []string)
 	return nil
 }
 
-// creates a new mnemonic phrase and inserts into the keyring
+// Creates a new mnemonic phrase and inserts into the configured keyring. Coin type defaults to 118.
 func (bc *BreakerClient) NewMnemonic(keyName string, mnemonic ...string) (string, error) {
 	keyOutput, err := bc.Client.KeyAddOrRestore(keyName, 118, mnemonic...)
 	if err != nil {
