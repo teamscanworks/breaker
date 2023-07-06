@@ -30,7 +30,7 @@ func TestBreakerClient(t *testing.T) {
 	mnemonic, err := breaker.NewMnemonic("example1")
 	require.NoError(t, err)
 	require.True(t, mnemonic != "")
-	mnemonic, err = breaker.NewMnemonic("preExisting", preExistingMnemonic)
-	require.NoError(t, err)
-	require.Equal(t, mnemonic, preExistingMnemonic)
+	_, err = breaker.NewMnemonic("preExisting", preExistingMnemonic)
+	// this should error because the simd test environment already has it configured
+	require.Error(t, err)
 }

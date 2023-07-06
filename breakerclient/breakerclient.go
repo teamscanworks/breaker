@@ -6,10 +6,10 @@ import (
 
 	"cosmossdk.io/x/circuit"
 	"cosmossdk.io/x/circuit/types"
-
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/tx"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
+	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/spf13/pflag"
 	compass "github.com/teamscanworks/compass"
 	"go.uber.org/zap"
@@ -86,21 +86,34 @@ func NewBreakerClient(
 // Helper function that attempts to set the address used by the client context for signing transactions
 // logs a warning if no keys are configured, otherwise takes the first available key.
 func (bc *BreakerClient) SetFromAddress() error {
-	keys, err := bc.Client.Keyring.List()
+	activeKp, err := bc.GetActiveKeypair()
 	if err != nil {
 		return err
 	}
-	if len(keys) > 0 {
-		granter, err := keys[0].GetAddress()
-		if err != nil {
-			return err
-		}
-		bc.cCtx = bc.cCtx.WithFromAddress(granter)
-		bc.log.Info("configured from address", zap.String("from.address", granter.String()))
-	} else {
+	if activeKp == nil {
 		bc.log.Warn("no keys found, you should create at least one")
+	} else {
+		bc.log.Info("configured from address", zap.String("from.address", activeKp.String()))
+		bc.cCtx = bc.cCtx.WithFromAddress(*activeKp)
 	}
 	return nil
+}
+
+// Returns the keypair actively in use for signing transactions (the first key in the keyring).
+// If no address has been configured returns `nil, nil`
+func (bc *BreakerClient) GetActiveKeypair() (*sdktypes.AccAddress, error) {
+	keys, err := bc.Client.Keyring.List()
+	if err != nil {
+		return nil, err
+	}
+	if len(keys) == 0 {
+		return nil, nil
+	}
+	kp, err := keys[0].GetAddress()
+	if err != nil {
+		return nil, err
+	}
+	return &kp, nil
 }
 
 // Lists commands/urls that have had their circuits tripped.

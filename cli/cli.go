@@ -157,6 +157,35 @@ func RunCLI() {
 					},
 				},
 				{
+					Name:  "list-active-keypair",
+					Usage: "print the keypair actively in use for signing transactions",
+					Action: func(cCtx *cli.Context) error {
+						cfgPath := cCtx.String("config.path")
+						cfg, err := config.LoadConfig(cfgPath)
+						if err != nil {
+							return err
+						}
+						logger, err := cfg.ZapLogger(cCtx.Bool("debug.log"))
+						if err != nil {
+							return err
+						}
+						bc, err := breakerclient.NewBreakerClient(cCtx.Context, logger, &cfg.Compass)
+						if err != nil {
+							return err
+						}
+						kp, err := bc.GetActiveKeypair()
+						if err != nil {
+							return err
+						}
+						if kp == nil {
+							logger.Warn("no active keypair")
+						} else {
+							logger.Info("found active keypair", zap.String("address", kp.String()))
+						}
+						return nil
+					},
+				},
+				{
 					Name:  "new-key",
 					Usage: "create a new keypair",
 					Flags: []cli.Flag{
@@ -189,7 +218,7 @@ func RunCLI() {
 							if err != nil {
 								return err
 							}
-							logger.Info("key.info", zap.Any("key.mnemonic", mnemonic))
+							fmt.Println("mnemonic ", mnemonic)
 						} else {
 							return fmt.Errorf("invalid options")
 						}
