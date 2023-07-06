@@ -1,8 +1,12 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 
 	"github.com/teamscanworks/breaker/api"
 	"github.com/teamscanworks/breaker/breakerclient"
@@ -11,6 +15,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// create, and execute the breaker-cli application
 func RunCLI() {
 	app := cli.NewApp()
 	app.Name = "breaker-cli"
@@ -27,11 +32,11 @@ func RunCLI() {
 		},
 	}
 	app.Commands = []*cli.Command{
-		&cli.Command{
+		{
 			Name:  "api",
 			Usage: "api management commands",
 			Subcommands: []*cli.Command{
-				&cli.Command{
+				{
 					Name:  "issue-jwt",
 					Usage: "encodes a new jwt for use with the api server",
 					Action: func(cCtx *cli.Context) error {
@@ -63,7 +68,7 @@ func RunCLI() {
 						},
 					},
 				},
-				&cli.Command{
+				{
 					Name:  "start",
 					Usage: "start the api server",
 					Flags: []cli.Flag{
@@ -73,6 +78,7 @@ func RunCLI() {
 						},
 					},
 					Action: func(cCtx *cli.Context) error {
+						ctx, cancel := context.WithCancel(cCtx.Context)
 						cfgPath := cCtx.String("config.path")
 						dryRun := cCtx.Bool("dry.run")
 						cfg, err := config.LoadConfig(cfgPath)
@@ -90,7 +96,7 @@ func RunCLI() {
 							cfg.API.TokenValidityDurationSeconds,
 						)
 						apiServer, err := api.NewAPI(
-							cCtx.Context,
+							ctx,
 							logger,
 							jwt,
 							apiOpts,
@@ -98,30 +104,48 @@ func RunCLI() {
 						if err != nil {
 							return err
 						}
-						logger.Info("TODO: enable catching unix signals to trigger api exit")
+						quitChannel := make(chan os.Signal, 1)
+						signal.Notify(quitChannel, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+						var wg sync.WaitGroup
+						wg.Add(1)
+						go func() {
+							<-quitChannel
+							logger.Info("caught exit signal")
+							cancel()
+							apiServer.Close()
+							wg.Done()
+						}()
 						if dryRun {
-							return apiServer.Serve()
+							if err := apiServer.Serve(); err != nil {
+								logger.Error("api serve encountered error", zap.Error(err))
+							}
 						} else {
 							bc, err := breakerclient.NewBreakerClient(
-								cCtx.Context,
+								ctx,
 								logger,
 								&cfg.Compass,
 							)
 							if err != nil {
+								// clear resources
+								quitChannel <- os.Interrupt
 								return err
 							}
 							apiServer.WithBreakerClient(bc)
-							return apiServer.Serve()
+							if err := apiServer.Serve(); err != nil {
+								logger.Error("api serve encountered error", zap.Error(err))
+							}
 						}
+						wg.Wait()
+						return nil
 					},
 				},
 			},
 		},
-		&cli.Command{
+		{
 			Name:  "config",
 			Usage: "configuration management",
 			Subcommands: []*cli.Command{
-				&cli.Command{
+				{
 					Name:  "new",
 					Usage: "generate a new configuration file",
 					Action: func(cCtx *cli.Context) error {
@@ -129,7 +153,7 @@ func RunCLI() {
 						return config.NewConfig(cfgPath)
 					},
 				},
-				&cli.Command{
+				{
 					Name:  "new-key",
 					Usage: "create a new keypair",
 					Flags: []cli.Flag{

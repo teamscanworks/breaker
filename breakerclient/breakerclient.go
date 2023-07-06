@@ -16,17 +16,32 @@ import (
 )
 
 // cosmos client that interacts with the x/circuit module, wrapping the compass client
+// in order to send transactions with BreakerClient, you should configure `BreakerClient::Client::Keyring`
+// with at least one key after `NewBreakerClient` returns, followed by `BreakerClient::SetFromAddress`
+// ```
+// bc, err := breakerclient.NewBreakerClient(ctx, log, cfg)
 //
-// note: uses the very first keypair return from Client.Keyring.List() as the signing keypair
+//	if err != nil {
+//		panic(err)
+//	}
+//
+// bc.NewMnemonic("defaultkey")
+// err = bc.SetFromAddress()
+//
+//	if err != nil {
+//		panic(err)
+//	}
+//
+// ````
 type BreakerClient struct {
+	Client    *compass.Client
+	flagSet   *pflag.FlagSet
+	log       *zap.Logger
+	txFactory tx.Factory
+	qc        types.QueryClient
+	cCtx      client.Context
 	ctx       context.Context
 	cancelFn  context.CancelFunc
-	Client    *compass.Client
-	qc        types.QueryClient
-	flagSet   *pflag.FlagSet
-	txFactory tx.Factory
-	log       *zap.Logger
-	cCtx      client.Context
 }
 
 // wraps the compass client with additional functionality specific to the x/circuit module
@@ -58,7 +73,9 @@ func NewBreakerClient(
 		log:       log.Named("breaker.client"),
 		cCtx:      cCtx,
 	}
+	// attempt to set a from account if there is at least 1 key in the keyring
 	if err = bc.SetFromAddress(); err != nil {
+		cancel()
 		return nil, err
 	}
 	return bc, nil

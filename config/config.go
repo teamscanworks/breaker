@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 
@@ -13,57 +14,85 @@ import (
 )
 
 var (
+	// an example config suitable for testing
 	ExampleConfig = Configuration{
 		Compass: *compass.GetSimdConfig(),
 		API: API{
 			ListenAddress: "http://127.0.0.1:6666",
 			Password:      "password123",
-			// empty means no extra identifier is used
+			// empty means no extra identifier is used when validating jwts
 			IdentifierField:              "",
 			TokenValidityDurationSeconds: 86400,
 		},
 	}
 )
 
+// exposes compass client configuration, as well as the breaker api config
 type Configuration struct {
 	Compass compass.ClientConfig `yaml:"compass"`
 	API     API                  `yaml:"api"`
 }
 
+// configures the breaker api
 type API struct {
+	// address that the api is served on
 	ListenAddress string `yaml:"listen_address"`
-	// password for the JWT
+	// password used for encoding/decoding and verifying jwts
 	Password string `yaml:"password"`
 	// field used to store additional information in
+	// can be left empty if not needed
 	IdentifierField string `yaml:"identifier_field"`
 	// time in seconds that issued jwt's are valid for
 	TokenValidityDurationSeconds int64 `yaml:"token_validity_duration_seconds"`
 }
 
-func NewConfig(path string) error {
-	data, err := yaml.Marshal(&ExampleConfig)
+// Saves the example configuration at `path` as a yaml file, you may
+// override the default configuration which is suitable for simd to one
+// suitable for cosmos, or osmosis by supplying two values for `environment`.
+//
+// When containing two elements, environment[0] is the network to adjust the
+// configuration for, currently supporting "cosmos" and "osmosis", while environment[1]
+// is the path to use as the "home" directory, namely for keyring storage.
+func NewConfig(path string, environment ...string) error {
+	// set the default configuration, usable in simd environments
+	cfg := ExampleConfig
+	if len(environment) > 0 {
+		fmt.Println("environment", environment)
+		if environment[0] == "cosmos" && len(environment) == 2 {
+			cfg.Compass = *compass.GetCosmosHubConfig(environment[1], true)
+			cfg.API.IdentifierField = "cosmos"
+		} else if environment[0] == "osmosis" && len(environment) == 2 {
+			cfg.Compass = *compass.GetOsmosisConfig(environment[1], true)
+			cfg.API.IdentifierField = "osmosis"
+		}
+	}
+	data, err := yaml.Marshal(&cfg)
 	if err != nil {
 		return err
 	}
 	return ioutil.WriteFile(path, data, os.ModePerm)
 }
 
+// loads the configuration from `path` which must be saved as yaml file
 func LoadConfig(path string) (*Configuration, error) {
 	var (
-		r   []byte
+		err error
+		dat []byte
 		cfg Configuration
 	)
-	r, err := ioutil.ReadFile(path)
+	dat, err = ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	if err = yaml.Unmarshal(r, &cfg); err != nil {
+	if err = yaml.Unmarshal(dat, &cfg); err != nil {
 		return nil, err
 	}
 	return &cfg, nil
 }
 
-// make sure to call `logger.Sync()` at somepoint before exiting
+// returns an initialized zap production logger, optionally with debug logs enabled
+// you must call `logger.Sync()` once sometime before the process exits although
+// not doing is probably ok?
 func (c *Configuration) ZapLogger(debug bool) (*zap.Logger, error) {
 	conf := zap.NewProductionConfig()
 	if debug {
@@ -74,6 +103,9 @@ func (c *Configuration) ZapLogger(debug bool) (*zap.Logger, error) {
 	return logger, err
 }
 
+// returns an instance of the api options struct
+// if you want to initialize the api but not have it broadcast transactions
+// when a circuit is tripped set `dryRun` to true.
 func (c *Configuration) ApiOpts(dryRun bool) api.ApiOpts {
 	return api.ApiOpts{
 		ListenAddress:                c.API.ListenAddress,
