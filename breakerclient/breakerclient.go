@@ -86,6 +86,7 @@ func (bc *BreakerClient) Authorize(ctx context.Context, grantee string, permissi
 	if err != nil {
 		return fmt.Errorf("failed to list keyring %s", err)
 	}
+	bc.log.Debug("listing keys", zap.Int64("key.count", int64(len(keys))))
 	granter := keys[0]
 	granterAddr, err := granter.GetAddress()
 	if err != nil {
@@ -103,6 +104,10 @@ func (bc *BreakerClient) TripCircuitBreaker(ctx context.Context, urls []string) 
 	keys, err := bc.Client.Keyring.List()
 	if err != nil {
 		return fmt.Errorf("failed to list keyring %s", err)
+	}
+	bc.log.Debug("listing keys", zap.Int64("key.count", int64(len(keys))))
+	if len(keys) == 0 {
+		return fmt.Errorf("found no keys")
 	}
 	granter := keys[0]
 	granterAddr, err := granter.GetAddress()

@@ -166,21 +166,6 @@ func RunCLI() {
 						} else {
 							return fmt.Errorf("invalid options")
 						}
-						fmt.Println("todo")
-						return nil
-					},
-				},
-				&cli.Command{
-					Name:  "import-key",
-					Usage: "import a pre-existing keypair",
-					Flags: []cli.Flag{
-						&cli.StringFlag{
-							Name:  "key.name",
-							Usage: "name to refer to the keypair with",
-						},
-					},
-					Action: func(cCtx *cli.Context) error {
-						fmt.Println("todo")
 						return nil
 					},
 				},
