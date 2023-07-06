@@ -17,6 +17,10 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	preExistingMnemonic = "muffin wrap reason cage blur crater uphold august silver slide loan home tag print this kiwi reflect run era cliff reveal minute bread garage"
+)
+
 func TestAPIDryRun(t *testing.T) {
 	t.Cleanup(func() {
 		os.RemoveAll("keyring-test")
@@ -89,8 +93,9 @@ func TestAPI(t *testing.T) {
 	})
 	require.NoError(t, err)
 	api.WithBreakerClient(breaker)
-	_, err = api.breakerClient.NewMnemonic("testKey")
+	_, err = api.breakerClient.NewMnemonic("default", preExistingMnemonic)
 	require.NoError(t, err)
+	require.NoError(t, api.breakerClient.SetFromAddress())
 	go func() {
 		api.Serve()
 	}()
@@ -100,15 +105,6 @@ func TestAPI(t *testing.T) {
 	api.logger.Info("issued token", zap.String("token", jwtToken))
 	client := http.DefaultClient
 
-	t.Run("v1/status/listDisabledCommands", func(t *testing.T) {
-		req, err := http.NewRequest("GET", "http://127.0.0.1:42690/v1/status/listDisabledCommands", nil)
-		require.NoError(t, err)
-		res, err := client.Do(req)
-		require.NoError(t, err)
-		data, err := ioutil.ReadAll(res.Body)
-		require.NoError(t, err)
-		t.Log("response ", string(data))
-	})
 	t.Run("v1/webhook", func(t *testing.T) {
 		api.logger.Info("executing webhook")
 		payload := Payload{

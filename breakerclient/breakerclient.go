@@ -25,6 +25,7 @@ type BreakerClient struct {
 	flagSet   *pflag.FlagSet
 	txFactory tx.Factory
 	log       *zap.Logger
+	cCtx      client.Context
 }
 
 // wraps the compass client with additional functionality specific to the x/circuit module
@@ -42,7 +43,9 @@ func NewBreakerClient(
 	}
 	qc := types.NewQueryClient(cl.GRPC)
 	txFactory := cl.TxFactory()
-	return &BreakerClient{
+	cCtx := cl.ClientContext()
+
+	bc := &BreakerClient{
 		ctx:       ctx,
 		cancelFn:  cancel,
 		Client:    cl,
@@ -50,7 +53,30 @@ func NewBreakerClient(
 		flagSet:   pflag.NewFlagSet("", pflag.ExitOnError),
 		txFactory: txFactory,
 		log:       log.Named("breaker.client"),
-	}, nil
+		cCtx:      cCtx,
+	}
+	if err = bc.SetFromAddress(); err != nil {
+		return nil, err
+	}
+	return bc, nil
+}
+
+func (bc *BreakerClient) SetFromAddress() error {
+	keys, err := bc.Client.Keyring.List()
+	if err != nil {
+		return err
+	}
+	if len(keys) > 0 {
+		granter, err := keys[0].GetAddress()
+		if err != nil {
+			return err
+		}
+		bc.cCtx = bc.cCtx.WithFromAddress(granter)
+		bc.log.Info("configured from address", zap.String("from.address", granter.String()))
+	} else {
+		bc.log.Warn("no keys found, you should create at least one")
+	}
+	return nil
 }
 
 // lists commands/urls that have had their circuits tripped
@@ -82,18 +108,10 @@ func (bc *BreakerClient) Authorize(ctx context.Context, grantee string, permissi
 		Level:         types.Permissions_Level(val),
 		LimitTypeUrls: limitTypeUrls,
 	}
-	keys, err := bc.Client.Keyring.List()
-	if err != nil {
-		return fmt.Errorf("failed to list keyring %s", err)
-	}
-	bc.log.Debug("listing keys", zap.Int64("key.count", int64(len(keys))))
-	granter := keys[0]
-	granterAddr, err := granter.GetAddress()
-	if err != nil {
-		return fmt.Errorf("failed to get address %s", err)
-	}
-	msg := types.NewMsgAuthorizeCircuitBreaker(granterAddr.String(), grantee, &permission)
-	if err := tx.BroadcastTx(bc.Client.ClientContext(), bc.txFactory, msg); err != nil {
+	granterAddr := bc.cCtx.GetFromAddress().String()
+	msg := types.NewMsgAuthorizeCircuitBreaker(granterAddr, grantee, &permission)
+	if err := tx.BroadcastTx(bc.cCtx, bc.txFactory, msg); err != nil {
+		bc.log.Error("transaction broadcast failed", zap.Error(err), zap.Stack("stacktrace"))
 		return fmt.Errorf("failed to broadcast transaction %v", err)
 	}
 	return nil
@@ -101,21 +119,10 @@ func (bc *BreakerClient) Authorize(ctx context.Context, grantee string, permissi
 
 // trip a circuit for the given urls, preventing calls to those module requests
 func (bc *BreakerClient) TripCircuitBreaker(ctx context.Context, urls []string) error {
-	keys, err := bc.Client.Keyring.List()
-	if err != nil {
-		return fmt.Errorf("failed to list keyring %s", err)
-	}
-	bc.log.Debug("listing keys", zap.Int64("key.count", int64(len(keys))))
-	if len(keys) == 0 {
-		return fmt.Errorf("found no keys")
-	}
-	granter := keys[0]
-	granterAddr, err := granter.GetAddress()
-	if err != nil {
-		return fmt.Errorf("failed to get address %s", err)
-	}
-	msg := types.NewMsgTripCircuitBreaker(granterAddr.String(), urls)
-	if err := tx.BroadcastTx(bc.Client.ClientContext(), bc.txFactory, msg); err != nil {
+	granterAddr := bc.cCtx.GetFromAddress().String()
+	msg := types.NewMsgTripCircuitBreaker(granterAddr, urls)
+	if err := tx.BroadcastTx(bc.cCtx, bc.txFactory, msg); err != nil {
+		bc.log.Error("transaction broadcast failed", zap.Error(err), zap.Stack("stacktrace"))
 		return fmt.Errorf("failed to broadcast transaction %v", err)
 	}
 	return nil
@@ -123,25 +130,18 @@ func (bc *BreakerClient) TripCircuitBreaker(ctx context.Context, urls []string) 
 
 // resets a tripped circuit, allowing calls to those module requests again
 func (bc *BreakerClient) ResetCircuitBreaker(ctx context.Context, urls []string) error {
-	keys, err := bc.Client.Keyring.List()
-	if err != nil {
-		return fmt.Errorf("failed to list keyring %s", err)
-	}
-	granter := keys[0]
-	granterAddr, err := granter.GetAddress()
-	if err != nil {
-		return fmt.Errorf("failed to get address %s", err)
-	}
-	msg := types.NewMsgResetCircuitBreaker(granterAddr.String(), urls)
-	if err := tx.BroadcastTx(bc.Client.ClientContext(), bc.txFactory, msg); err != nil {
+	granterAddr := bc.cCtx.GetFromAddress().String()
+	msg := types.NewMsgResetCircuitBreaker(granterAddr, urls)
+	if err := tx.BroadcastTx(bc.cCtx, bc.txFactory, msg); err != nil {
+		bc.log.Error("transaction broadcast failed", zap.Error(err), zap.Stack("stacktrace"))
 		return fmt.Errorf("failed to broadcast transaction %v", err)
 	}
 	return nil
 }
 
 // creates a new mnemonic phrase and inserts into the keyring
-func (bc *BreakerClient) NewMnemonic(keyName string) (string, error) {
-	keyOutput, err := bc.Client.KeyAddOrRestore(keyName, 118)
+func (bc *BreakerClient) NewMnemonic(keyName string, mnemonic ...string) (string, error) {
+	keyOutput, err := bc.Client.KeyAddOrRestore(keyName, 118, mnemonic...)
 	if err != nil {
 		bc.log.Error("failed to add new key", zap.Error(err))
 		return "", fmt.Errorf("failed to create new mnemonic %s", err)

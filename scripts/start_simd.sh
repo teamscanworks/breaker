@@ -4,6 +4,7 @@ NAME="breaker"
 CHAIN_ID="1234"
 KEY_NAME="breaker_admin"
 DATA_DIR="$HOME/.simapp"
+TEST_ACCOUNT="cosmos18q2gyed58368mmrkz3k30s6kyrx0p4wrykals7"
 ALICE_ADDR="cosmos1cr2u792nntd24mlczu8x4eyfx0tuaa3yqardcv"
 VALIDATOR_ADDR="cosmos1xy3zta7m6f90lqg2nfvc47f78s9js2q0dr4q65"
 if [[ "$1" == "reset" ]]; then
@@ -11,7 +12,8 @@ if [[ "$1" == "reset" ]]; then
     simd comet unsafe-reset-all
     simd init "$NAME" --chain-id "$CHAIN_ID" --home "$DATA_DIR" --overwrite
     #simd keys add "$KEY_NAME" --home "$DATA_DIR"
-    simd genesis add-genesis-account  "$KEY_NAME" 10000000000000000stake #--keyring-backend test 
+    simd genesis add-genesis-account "$TEST_ACCOUNT" 10000000000000000stake
+    simd genesis add-genesis-account "$KEY_NAME" 10000000000000000stake #--keyring-backend test 
     simd genesis add-genesis-account $ALICE_ADDR 100000000000stake #--keyring-backend test 
     simd genesis add-genesis-account $VALIDATOR_ADDR 100000000000stake #--keyring-backend test 
     #simd genesis collect-gentxs
