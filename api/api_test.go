@@ -125,6 +125,7 @@ func TestAPI(t *testing.T) {
 	go func() {
 		api.Serve()
 	}()
+	time.Sleep(time.Second * 2)
 	api.logger.Info("issueing token")
 	jwtToken, err := api.jwt.Encode("apiTest", nil)
 	require.NoError(t, err)
