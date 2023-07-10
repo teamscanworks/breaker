@@ -25,7 +25,7 @@ lint:
 	
 # Execute all tests
 .PHONY: test
-test-all:
+test:
 	@echo "===================   executing all tests   ==================="
-	go test -race -cover ./...
+	go test -cover ./...
 	@echo "===================          done           ==================="

@@ -1,3 +1,2 @@
-// Package api provides a http api that exposes the ability to trip a circuit breaker via a webhook
-// gating access via JWT authentication, and exposing other statistical information
+// Package a http api that exposes webhook functionality which can be used to trip and reset the x/circuit module.
 package api

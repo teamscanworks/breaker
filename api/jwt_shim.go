@@ -10,22 +10,30 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 )
 
-// exposes convenience functions for issueing and parsing JWTs
+// wraps jwtauth.JWTAuth with helper functions to ease usage of JWTs for API authentication
 type JWT struct {
 	tokenAuth           *jwtauth.JWTAuth
 	identifierField     string
 	validityDurationSec int64
 }
 
+// Initializes a new JWT object, with the signature algorith m HS256 encrypted with the given `password`.
+// If you want to add supplemental information to the JWT set `identifierField` to some string value.
+// The tokens will be valid for a number of seconds equal to `tokenValidityDurationSec`
 func NewJWT(password string, identifierField string, tokenValidityDurationSec int64) *JWT {
+	return NewJWTWithSignature(password, identifierField, "HS256", tokenValidityDurationSec)
+}
+
+// Like NewJWT but allows control of the signature algorithm.
+func NewJWTWithSignature(password string, identifierField string, signature string, tokenValidityDurationSec int64) *JWT {
 	return &JWT{
 		identifierField:     identifierField,
-		tokenAuth:           jwtauth.New("HS256", []byte(password), nil),
+		tokenAuth:           jwtauth.New(signature, []byte(password), nil),
 		validityDurationSec: tokenValidityDurationSec,
 	}
 }
 
-// issues a new jwt adding the given identifier and extra fields to the claims
+// Issues a new jwt adding the given identifier and extra fields to the claims.
 func (jwt *JWT) Encode(identifier string, extraFields map[string]interface{}) (string, error) {
 	if extraFields == nil {
 		extraFields = make(map[string]interface{}, 3)
@@ -44,12 +52,12 @@ func (jwt *JWT) Encode(identifier string, extraFields map[string]interface{}) (s
 	return encoded, nil
 }
 
-// parses an encoded jwt
+// Parses an encoded jwt token it's a jwt.Token type.
 func (jwt *JWT) Decode(ctx context.Context, token string) (jwt.Token, error) {
 	return jwt.tokenAuth.Decode(token)
 }
 
-// used to perform validation of the jwt token, and identifier fields
+// Used to perform validation of the jwt token, and identifier fields if required.
 func (jt *JWT) CheckToken(token jwt.Token) error {
 	if token == nil || jwt.Validate(token) != nil {
 		return fmt.Errorf("failed to validate token")

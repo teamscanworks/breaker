@@ -8,6 +8,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// Returns types.DisabledListResponse containing all module request urls that have been disabled.
 func (api *API) ListDisabledCommands(w http.ResponseWriter, r *http.Request) {
 	if api.breakerClient == nil {
 		http.Error(w, "no initialized cosmos client", http.StatusInternalServerError)
@@ -28,6 +29,7 @@ func (api *API) ListDisabledCommands(w http.ResponseWriter, r *http.Request) {
 	http.ServeContent(w, r, "", time.Now(), bytes.NewReader(data))
 }
 
+// Returns types.AccountsResponse containing all accounts and their corresponding permission levels
 func (api *API) ListAccounts(w http.ResponseWriter, r *http.Request) {
 	if api.breakerClient == nil {
 		http.Error(w, "no initialized cosmos client", http.StatusInternalServerError)

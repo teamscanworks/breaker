@@ -10,6 +10,10 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	preExistingMnemonic = "muffin wrap reason cage blur crater uphold august silver slide loan home tag print this kiwi reflect run era cliff reveal minute bread garage"
+)
+
 func TestBreakerClient(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -22,4 +26,11 @@ func TestBreakerClient(t *testing.T) {
 	disabledCmds, err := breaker.ListDisabledCommands(ctx)
 	require.NoError(t, err)
 	require.Len(t, disabledCmds.DisabledList, 0)
+
+	mnemonic, err := breaker.NewMnemonic("example1")
+	require.NoError(t, err)
+	require.True(t, mnemonic != "")
+	_, err = breaker.NewMnemonic("preExisting", preExistingMnemonic)
+	// this should error because the simd test environment already has it configured
+	require.Error(t, err)
 }
