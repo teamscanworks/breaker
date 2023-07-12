@@ -1,0 +1,15 @@
+{
+ "messages": [
+  {
+   "@type": "/cosmos.circuit.v1.MsgAuthorizeCircuitBreaker",
+   "granter": "cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn",
+   "grantee": "cosmos18q2gyed58368mmrkz3k30s6kyrx0p4wrykals7",
+   "permissions": null
+  }
+ ],
+ "metadata": "ipfs://QmXEJeepxvDnLdvPHv7pD1UatGxLpfbqj9XLVrJYoXJq9P",
+ "deposit": "100000000000000stake",
+ "title": "grant permissions to test account",
+ "summary": "grant permissions to test account",
+ "expedited": true
+}
