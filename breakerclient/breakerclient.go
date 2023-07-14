@@ -34,14 +34,12 @@ import (
 //
 // ````
 type BreakerClient struct {
-	Client    *compass.Client
-	flagSet   *pflag.FlagSet
-	log       *zap.Logger
-	txFactory tx.Factory
-	qc        types.QueryClient
-	cCtx      client.Context
-	ctx       context.Context
-	cancelFn  context.CancelFunc
+	Client   *compass.Client
+	flagSet  *pflag.FlagSet
+	log      *zap.Logger
+	qc       types.QueryClient
+	ctx      context.Context
+	cancelFn context.CancelFunc
 }
 
 // Wraps the compass client with additional functionality specific to the x/circuit module.
@@ -62,18 +60,14 @@ func NewBreakerClient(
 	}
 	// initialize circuit breaker module specific clients
 	qc := types.NewQueryClient(cl.GRPC)
-	txFactory := cl.TxFactory()
-	cCtx := cl.ClientContext()
 
 	bc := &BreakerClient{
-		ctx:       ctx,
-		cancelFn:  cancel,
-		Client:    cl,
-		qc:        qc,
-		flagSet:   pflag.NewFlagSet("", pflag.ExitOnError),
-		txFactory: txFactory,
-		log:       log.Named("breaker.client"),
-		cCtx:      cCtx,
+		ctx:      ctx,
+		cancelFn: cancel,
+		Client:   cl,
+		qc:       qc,
+		flagSet:  pflag.NewFlagSet("", pflag.ExitOnError),
+		log:      log.Named("breaker.client"),
 	}
 	// attempt to set a from account if there is at least 1 key in the keyring
 	if err = bc.SetFromAddress(); err != nil {
@@ -86,34 +80,13 @@ func NewBreakerClient(
 // Helper function that attempts to set the address used by the client context for signing transactions
 // logs a warning if no keys are configured, otherwise takes the first available key.
 func (bc *BreakerClient) SetFromAddress() error {
-	activeKp, err := bc.GetActiveKeypair()
-	if err != nil {
-		return err
-	}
-	if activeKp == nil {
-		bc.log.Warn("no keys found, you should create at least one")
-	} else {
-		bc.log.Info("configured from address", zap.String("from.address", activeKp.String()))
-		bc.cCtx = bc.cCtx.WithFromAddress(*activeKp)
-	}
-	return nil
+	return bc.Client.SetFromAddress()
 }
 
 // Returns the keypair actively in use for signing transactions (the first key in the keyring).
 // If no address has been configured returns `nil, nil`
 func (bc *BreakerClient) GetActiveKeypair() (*sdktypes.AccAddress, error) {
-	keys, err := bc.Client.Keyring.List()
-	if err != nil {
-		return nil, err
-	}
-	if len(keys) == 0 {
-		return nil, nil
-	}
-	kp, err := keys[0].GetAddress()
-	if err != nil {
-		return nil, err
-	}
-	return &kp, nil
+	return bc.Client.GetActiveKeypair()
 }
 
 // Lists commands/urls that have had their circuits tripped.
@@ -145,9 +118,9 @@ func (bc *BreakerClient) Authorize(ctx context.Context, grantee string, permissi
 		Level:         types.Permissions_Level(val),
 		LimitTypeUrls: limitTypeUrls,
 	}
-	granterAddr := bc.cCtx.GetFromAddress().String()
+	granterAddr := bc.ClientContext().GetFromAddress().String()
 	msg := types.NewMsgAuthorizeCircuitBreaker(granterAddr, grantee, &permission)
-	if err := tx.BroadcastTx(bc.cCtx, bc.txFactory, msg); err != nil {
+	if err := tx.BroadcastTx(bc.ClientContext(), bc.TxFactory(), msg); err != nil {
 		bc.log.Error("transaction broadcast failed", zap.Error(err), zap.Stack("stacktrace"))
 		return fmt.Errorf("failed to broadcast transaction %v", err)
 	}
@@ -156,9 +129,10 @@ func (bc *BreakerClient) Authorize(ctx context.Context, grantee string, permissi
 
 // Trip a circuit for the given urls, preventing calls to the module request urls.
 func (bc *BreakerClient) TripCircuitBreaker(ctx context.Context, urls []string) error {
-	granterAddr := bc.cCtx.GetFromAddress().String()
+	granterAddr := bc.ClientContext().GetFromAddress().String()
 	msg := types.NewMsgTripCircuitBreaker(granterAddr, urls)
-	if err := tx.BroadcastTx(bc.cCtx, bc.txFactory, msg); err != nil {
+	bc.log.Debug("tripping breaker", zap.Any("message", msg), zap.String("granter.addr", granterAddr))
+	if err := tx.BroadcastTx(bc.ClientContext(), bc.TxFactory(), msg); err != nil {
 		bc.log.Error("transaction broadcast failed", zap.Error(err), zap.Stack("stacktrace"))
 		return fmt.Errorf("failed to broadcast transaction %v", err)
 	}
@@ -167,9 +141,9 @@ func (bc *BreakerClient) TripCircuitBreaker(ctx context.Context, urls []string) 
 
 // Resets a tripped circuit, allowing calls to the module request urls.
 func (bc *BreakerClient) ResetCircuitBreaker(ctx context.Context, urls []string) error {
-	granterAddr := bc.cCtx.GetFromAddress().String()
+	granterAddr := bc.ClientContext().GetFromAddress().String()
 	msg := types.NewMsgResetCircuitBreaker(granterAddr, urls)
-	if err := tx.BroadcastTx(bc.cCtx, bc.txFactory, msg); err != nil {
+	if err := tx.BroadcastTx(bc.ClientContext(), bc.TxFactory(), msg); err != nil {
 		bc.log.Error("transaction broadcast failed", zap.Error(err), zap.Stack("stacktrace"))
 		return fmt.Errorf("failed to broadcast transaction %v", err)
 	}
@@ -184,4 +158,16 @@ func (bc *BreakerClient) NewMnemonic(keyName string, mnemonic ...string) (string
 		return "", fmt.Errorf("failed to create new mnemonic %s", err)
 	}
 	return keyOutput.Mnemonic, nil
+}
+
+func (bc *BreakerClient) Prepare() error {
+	return bc.Client.PrepareClientContext(bc.ClientContext())
+}
+
+func (bc *BreakerClient) ClientContext() client.Context {
+	return bc.Client.ClientContext()
+}
+
+func (bc *BreakerClient) TxFactory() tx.Factory {
+	return bc.Client.TxFactory()
 }
