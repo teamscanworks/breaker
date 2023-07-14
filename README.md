@@ -81,5 +81,8 @@ To create a fresh test environment run `make reset-simd`. After this you can run
 ```shell
 $> make reset-simd
 $> make start-simd
-# open new terminal window
+# open new terminal window to grant authorization permissions
+$> ./scripts/submit_prop.sh
+$> ./scripts/submit_votes.sh
+# now open a new terminal and run the tests
 $> make test

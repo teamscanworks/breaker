@@ -21,7 +21,7 @@ if [[ "$1" == "reset" ]]; then
     echo "off notice dress fantasy type cargo among jaguar cream ride swift shuffle wear below citizen trim worry huge fire champion tunnel unique please wine" | simd keys add "$VOTER_NAME" --recover
 
     info_log "adding genesis account for $TEST_ACCOUNT"
-    simd genesis add-genesis-account "$TEST_ACCOUNT" 1stake
+    simd genesis add-genesis-account "$TEST_ACCOUNT" 10000000000000000stake
     
     info_log "adding genesis account for $VOTER_NAME"
     simd genesis add-genesis-account "$VOTER_NAME" 10000000000000000stake
@@ -51,5 +51,5 @@ if [[ "$1" == "reset" ]]; then
     info_log "validating genesis file"
     simd genesis validate --log_level warn
 else
-    simd start --rpc.laddr tcp://127.0.0.1:26657 --x-crisis-skip-assert-invariants --rpc.unsafe --api.enable --grpc-web.enable --api.swagger --trace --trace-store trace_data.txt --minimum-gas-prices 0stake
+    simd start --rpc.laddr tcp://127.0.0.1:26657 --x-crisis-skip-assert-invariants --rpc.unsafe --api.enable --grpc-web.enable --api.swagger --trace --trace-store trace_data.txt --minimum-gas-prices 0stake --log_level debug
 fi
