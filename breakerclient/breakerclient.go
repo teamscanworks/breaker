@@ -153,7 +153,16 @@ func (bc *BreakerClient) NewMnemonic(keyName string, mnemonic ...string) (string
 		bc.log.Error("failed to add new key", zap.Error(err))
 		return "", fmt.Errorf("failed to create new mnemonic %s", err)
 	}
+	if err := bc.Client.MigrateKeyring(); err != nil {
+		return "", fmt.Errorf("failed to migrate keyring %s", err)
+	} else {
+		bc.log.Info("keyring migration ok")
+	}
 	return keyOutput.Mnemonic, nil
+}
+
+func (bc *BreakerClient) UpdateClientFromName(name string) {
+	bc.Client.UpdateFromName(name)
 }
 
 func (bc *BreakerClient) Prepare() error {

@@ -122,6 +122,7 @@ func TestAPI(t *testing.T) {
 	_, err = api.breakerClient.NewMnemonic("default", preExistingMnemonic)
 	require.NoError(t, err)
 	require.NoError(t, api.breakerClient.SetFromAddress())
+	api.breakerClient.UpdateClientFromName("default")
 	go func() {
 		api.Serve()
 	}()
@@ -131,11 +132,15 @@ func TestAPI(t *testing.T) {
 	require.NoError(t, err)
 	api.logger.Info("issued token", zap.String("token", jwtToken))
 	client := http.DefaultClient
-
+	t.Run("verify breaker client query works", func(t *testing.T) {
+		list, err := api.breakerClient.Accounts(ctx)
+		require.NoError(t, err)
+		require.True(t, len(list.Accounts) > 0)
+	})
 	t.Run("v1/webhook", func(t *testing.T) {
 		api.logger.Info("executing webhook")
 		payload := PayloadV1{
-			Urls:    []string{"/cosmos/apiv1"},
+			Urls:    []string{"/cosmos.circuit.v1.MsgAuthorizeCircuitBreaker"},
 			Message: "amount > 1000",
 		}
 		data, err := json.Marshal(&payload)
