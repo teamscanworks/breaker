@@ -120,31 +120,39 @@ func (bc *BreakerClient) Authorize(ctx context.Context, grantee string, permissi
 	}
 	granterAddr := bc.ClientContext().GetFromAddress().String()
 	msg := types.NewMsgAuthorizeCircuitBreaker(granterAddr, grantee, &permission)
+	if err := tx.GenerateOrBroadcastTxWithFactory(bc.ClientContext(), bc.TxFactory(), msg); err != nil {
+		bc.log.Error("transaction broadcast failed", zap.Error(err), zap.Stack("stack.trace"))
+	}
 	if err := tx.BroadcastTx(bc.ClientContext(), bc.TxFactory(), msg); err != nil {
-		bc.log.Error("transaction broadcast failed", zap.Error(err), zap.Stack("stacktrace"))
+		bc.log.Error("transaction broadcast failed", zap.Error(err), zap.Stack("stack.trace"))
 		return fmt.Errorf("failed to broadcast transaction %v", err)
 	}
 	return nil
 }
 
 // Trip a circuit for the given urls, preventing calls to the module request urls.
-func (bc *BreakerClient) TripCircuitBreaker(ctx context.Context, urls []string) error {
+func (bc *BreakerClient) TripCircuitBreaker(urls []string) error {
 	granterAddr := bc.ClientContext().GetFromAddress().String()
 	msg := types.NewMsgTripCircuitBreaker(granterAddr, urls)
-	bc.log.Debug("tripping breaker", zap.Any("message", msg), zap.String("granter.addr", granterAddr))
+	if err := tx.GenerateOrBroadcastTxWithFactory(bc.ClientContext(), bc.TxFactory(), msg); err != nil {
+		bc.log.Error("transaction broadcast failed", zap.Error(err), zap.Stack("stack.trace"))
+	}
 	if err := tx.BroadcastTx(bc.ClientContext(), bc.TxFactory(), msg); err != nil {
-		bc.log.Error("transaction broadcast failed", zap.Error(err), zap.Stack("stacktrace"))
+		bc.log.Error("transaction broadcast failed", zap.Error(err), zap.Stack("stack.trace"))
 		return fmt.Errorf("failed to broadcast transaction %v", err)
 	}
 	return nil
 }
 
 // Resets a tripped circuit, allowing calls to the module request urls.
-func (bc *BreakerClient) ResetCircuitBreaker(ctx context.Context, urls []string) error {
+func (bc *BreakerClient) ResetCircuitBreaker(urls []string) error {
 	granterAddr := bc.ClientContext().GetFromAddress().String()
 	msg := types.NewMsgResetCircuitBreaker(granterAddr, urls)
+	if err := tx.GenerateOrBroadcastTxWithFactory(bc.ClientContext(), bc.TxFactory(), msg); err != nil {
+		bc.log.Error("transaction broadcast failed", zap.Error(err), zap.Stack("stack.trace"))
+	}
 	if err := tx.BroadcastTx(bc.ClientContext(), bc.TxFactory(), msg); err != nil {
-		bc.log.Error("transaction broadcast failed", zap.Error(err), zap.Stack("stacktrace"))
+		bc.log.Error("transaction broadcast failed", zap.Error(err), zap.Stack("stack.trace"))
 		return fmt.Errorf("failed to broadcast transaction %v", err)
 	}
 	return nil
