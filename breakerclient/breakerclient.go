@@ -123,10 +123,6 @@ func (bc *BreakerClient) Authorize(ctx context.Context, grantee string, permissi
 	if err := tx.GenerateOrBroadcastTxWithFactory(bc.ClientContext(), bc.TxFactory(), msg); err != nil {
 		bc.log.Error("transaction broadcast failed", zap.Error(err), zap.Stack("stack.trace"))
 	}
-	if err := tx.BroadcastTx(bc.ClientContext(), bc.TxFactory(), msg); err != nil {
-		bc.log.Error("transaction broadcast failed", zap.Error(err), zap.Stack("stack.trace"))
-		return fmt.Errorf("failed to broadcast transaction %v", err)
-	}
 	return nil
 }
 
@@ -137,10 +133,6 @@ func (bc *BreakerClient) TripCircuitBreaker(urls []string) error {
 	if err := tx.GenerateOrBroadcastTxWithFactory(bc.ClientContext(), bc.TxFactory(), msg); err != nil {
 		bc.log.Error("transaction broadcast failed", zap.Error(err), zap.Stack("stack.trace"))
 	}
-	if err := tx.BroadcastTx(bc.ClientContext(), bc.TxFactory(), msg); err != nil {
-		bc.log.Error("transaction broadcast failed", zap.Error(err), zap.Stack("stack.trace"))
-		return fmt.Errorf("failed to broadcast transaction %v", err)
-	}
 	return nil
 }
 
@@ -150,10 +142,6 @@ func (bc *BreakerClient) ResetCircuitBreaker(urls []string) error {
 	msg := types.NewMsgResetCircuitBreaker(granterAddr, urls)
 	if err := tx.GenerateOrBroadcastTxWithFactory(bc.ClientContext(), bc.TxFactory(), msg); err != nil {
 		bc.log.Error("transaction broadcast failed", zap.Error(err), zap.Stack("stack.trace"))
-	}
-	if err := tx.BroadcastTx(bc.ClientContext(), bc.TxFactory(), msg); err != nil {
-		bc.log.Error("transaction broadcast failed", zap.Error(err), zap.Stack("stack.trace"))
-		return fmt.Errorf("failed to broadcast transaction %v", err)
 	}
 	return nil
 }

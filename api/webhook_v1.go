@@ -59,16 +59,24 @@ func (api *API) HandleWebookV1(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if payload.Operation == MODE_TRIP {
-		if err := api.breakerClient.TripCircuitBreaker(r.Context(), payload.Urls); err != nil {
+		if err := api.breakerClient.Prepare(); err != nil {
+			api.logger.Error("failed to prepare circuit breaker", zap.Error(err))
+			http.Error(w, "preparation failed", http.StatusInternalServerError)
+			return
+		}
+		if err := api.breakerClient.TripCircuitBreaker(payload.Urls); err != nil {
 			api.logger.Error("failed to trip circuit breaker", zap.Error(err))
+			http.Error(w, "failed to trip", http.StatusInternalServerError)
+			return
 		} else {
 			api.logger.Info("tripped circuit", zap.Any("urls", payload.Urls))
 		}
 	} else if payload.Operation == MODE_RESET {
-		if err := api.breakerClient.ResetCircuitBreaker(r.Context(), payload.Urls); err != nil {
+		if err := api.breakerClient.ResetCircuitBreaker(payload.Urls); err != nil {
 			api.logger.Error("failed to trip circuit breaker", zap.Error(err))
+			http.Error(w, "failed to reset circuit breaker", http.StatusInternalServerError)
 		} else {
-			api.logger.Info("tripped circuit", zap.Any("urls", payload.Urls))
+			api.logger.Info("reset circuit", zap.Any("urls", payload.Urls))
 		}
 	} else {
 		http.Error(w, "unsupported mode", http.StatusBadRequest)
