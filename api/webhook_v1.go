@@ -109,8 +109,9 @@ func (api *API) HandleWebookV1(w http.ResponseWriter, r *http.Request) {
 			api.logger.Info("reset circuit", zap.Any("urls", payload.Urls))
 		}
 	} else {
-		http.Error(w, "unsupported mode", http.StatusBadRequest)
-		return
+		response = Response{
+			Message: fmt.Sprintf("unsupported mode %v", payload.Operation),
+		}
 	}
 	rBytes, err := json.Marshal(&response)
 	if err != nil {
