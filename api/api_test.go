@@ -153,7 +153,8 @@ func TestAPI(t *testing.T) {
 			require.NoError(t, err)
 			data, err = io.ReadAll(res.Body)
 			require.NoError(t, err)
-			_ = data
+			// TODO: deserialize and validate response values
+			t.Log(string(data))
 		})
 		t.Run("mode_reset", func(t *testing.T) {
 			payload := PayloadV1{
@@ -171,7 +172,8 @@ func TestAPI(t *testing.T) {
 			require.NoError(t, err)
 			data, err = io.ReadAll(res.Body)
 			require.NoError(t, err)
-			_ = data
+			// TODO: deserialize and validate response values
+			t.Log(string(data))
 		})
 	})
 	api.logger.Info("sleeping")
