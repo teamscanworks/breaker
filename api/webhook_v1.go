@@ -117,6 +117,7 @@ func (api *API) HandleWebookV1(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		api.logger.Error("failed to serialize response", zap.Error(err))
 		http.Error(w, "failed to serialize response", http.StatusInternalServerError)
+		return
 	}
 	http.ServeContent(w, r, "", time.Now(), bytes.NewReader(rBytes))
 }
