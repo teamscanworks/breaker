@@ -7,7 +7,6 @@ import (
 	"cosmossdk.io/x/circuit"
 	"cosmossdk.io/x/circuit/types"
 	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/client/tx"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/spf13/pflag"
@@ -109,41 +108,47 @@ func (bc *BreakerClient) Accounts(ctx context.Context) (*types.AccountsResponse,
 }
 
 // Authorize a given account with the specific permission level.
-func (bc *BreakerClient) Authorize(ctx context.Context, grantee string, permissionLevel string, limitTypeUrls []string) error {
+func (bc *BreakerClient) Authorize(ctx context.Context, grantee string, permissionLevel string, limitTypeUrls []string) (string, error) {
 	val, ok := types.Permissions_Level_value[permissionLevel]
 	if !ok {
-		return fmt.Errorf("failed to find permission level value for key %s", permissionLevel)
+		return "", fmt.Errorf("failed to find permission level value for key %s", permissionLevel)
 	}
 	permission := types.Permissions{
 		Level:         types.Permissions_Level(val),
 		LimitTypeUrls: limitTypeUrls,
 	}
-	granterAddr := bc.ClientContext().GetFromAddress().String()
+	granterAddr := bc.Client.FromAddress()
 	msg := types.NewMsgAuthorizeCircuitBreaker(granterAddr, grantee, &permission)
-	if err := tx.GenerateOrBroadcastTxWithFactory(bc.ClientContext(), bc.TxFactory(), msg); err != nil {
-		bc.log.Error("transaction broadcast failed", zap.Error(err), zap.Stack("stack.trace"))
+	if tx, err := bc.Client.SendTransaction(ctx, msg); err != nil {
+		bc.log.Error("failed to send transaction", zap.Stack("stack.trace"))
+		return "", err
+	} else {
+		return tx, nil
 	}
-	return nil
 }
 
 // Trip a circuit for the given urls, preventing calls to the module request urls.
-func (bc *BreakerClient) TripCircuitBreaker(urls []string) error {
-	granterAddr := bc.ClientContext().GetFromAddress().String()
+func (bc *BreakerClient) TripCircuitBreaker(ctx context.Context, urls []string) (string, error) {
+	granterAddr := bc.Client.FromAddress()
 	msg := types.NewMsgTripCircuitBreaker(granterAddr, urls)
-	if err := tx.GenerateOrBroadcastTxWithFactory(bc.ClientContext(), bc.TxFactory(), msg); err != nil {
-		bc.log.Error("transaction broadcast failed", zap.Error(err), zap.Stack("stack.trace"))
+	if tx, err := bc.Client.SendTransaction(ctx, msg); err != nil {
+		bc.log.Error("failed to send transaction", zap.Stack("stack.trace"))
+		return "", err
+	} else {
+		return tx, nil
 	}
-	return nil
 }
 
 // Resets a tripped circuit, allowing calls to the module request urls.
-func (bc *BreakerClient) ResetCircuitBreaker(urls []string) error {
-	granterAddr := bc.ClientContext().GetFromAddress().String()
+func (bc *BreakerClient) ResetCircuitBreaker(ctx context.Context, urls []string) (string, error) {
+	granterAddr := bc.Client.FromAddress()
 	msg := types.NewMsgResetCircuitBreaker(granterAddr, urls)
-	if err := tx.GenerateOrBroadcastTxWithFactory(bc.ClientContext(), bc.TxFactory(), msg); err != nil {
-		bc.log.Error("transaction broadcast failed", zap.Error(err), zap.Stack("stack.trace"))
+	if tx, err := bc.Client.SendTransaction(ctx, msg); err != nil {
+		bc.log.Error("failed to send transaction", zap.Stack("stack.trace"))
+		return "", err
+	} else {
+		return tx, nil
 	}
-	return nil
 }
 
 // Creates a new mnemonic phrase and inserts into the configured keyring. Coin type defaults to 118.
@@ -163,16 +168,4 @@ func (bc *BreakerClient) NewMnemonic(keyName string, mnemonic ...string) (string
 
 func (bc *BreakerClient) UpdateClientFromName(name string) {
 	bc.Client.UpdateFromName(name)
-}
-
-func (bc *BreakerClient) Prepare() error {
-	return bc.Client.PrepareClientContext(bc.ClientContext())
-}
-
-func (bc *BreakerClient) ClientContext() client.Context {
-	return bc.Client.ClientContext()
-}
-
-func (bc *BreakerClient) TxFactory() tx.Factory {
-	return bc.Client.TxFactory()
 }

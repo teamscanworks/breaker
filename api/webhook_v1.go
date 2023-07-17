@@ -1,9 +1,12 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"go.uber.org/zap"
 )
@@ -23,6 +26,18 @@ type PayloadV1 struct {
 	// module request urls that we want to apply some action to
 	Urls []string
 	// the operation being applied against the circuit breaker module
+	Operation Mode
+}
+
+// A response returned from all webhook calls
+type Response struct {
+	// response message, if no errors set to "ok" otherwise includes the error
+	Message string
+	Urls    []string
+	// transaction hash of any transaction(s) which were sent, if webhook failed
+	// this is an empty string
+	TxHash string
+	// The operation that was applied to the circuit breaker
 	Operation Mode
 }
 
@@ -58,29 +73,49 @@ func (api *API) HandleWebookV1(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "no initialized breaker client", http.StatusInternalServerError)
 		return
 	}
+	var response Response
 	if payload.Operation == MODE_TRIP {
-		if err := api.breakerClient.Prepare(); err != nil {
-			api.logger.Error("failed to prepare circuit breaker", zap.Error(err))
-			http.Error(w, "preparation failed", http.StatusInternalServerError)
-			return
-		}
-		if err := api.breakerClient.TripCircuitBreaker(payload.Urls); err != nil {
+		if tx, err := api.breakerClient.TripCircuitBreaker(r.Context(), payload.Urls); err != nil {
 			api.logger.Error("failed to trip circuit breaker", zap.Error(err))
-			http.Error(w, "failed to trip", http.StatusInternalServerError)
-			return
+			response = Response{
+				Message:   fmt.Sprintf("failed to trip circuit breaker %s", err),
+				Urls:      payload.Urls,
+				Operation: payload.Operation,
+			}
 		} else {
+			response = Response{
+				Message:   "ok",
+				Urls:      payload.Urls,
+				Operation: payload.Operation,
+				TxHash:    tx,
+			}
 			api.logger.Info("tripped circuit", zap.Any("urls", payload.Urls))
 		}
 	} else if payload.Operation == MODE_RESET {
-		if err := api.breakerClient.ResetCircuitBreaker(payload.Urls); err != nil {
+		if tx, err := api.breakerClient.ResetCircuitBreaker(r.Context(), payload.Urls); err != nil {
 			api.logger.Error("failed to trip circuit breaker", zap.Error(err))
-			http.Error(w, "failed to reset circuit breaker", http.StatusInternalServerError)
+			response = Response{
+				Message:   fmt.Sprintf("failed to reset circuit breaker %s", err),
+				Urls:      payload.Urls,
+				Operation: payload.Operation,
+			}
 		} else {
+			response = Response{
+				Message:   "ok",
+				Urls:      payload.Urls,
+				Operation: payload.Operation,
+				TxHash:    tx,
+			}
 			api.logger.Info("reset circuit", zap.Any("urls", payload.Urls))
 		}
 	} else {
 		http.Error(w, "unsupported mode", http.StatusBadRequest)
 		return
 	}
-
+	rBytes, err := json.Marshal(&response)
+	if err != nil {
+		api.logger.Error("failed to serialize response", zap.Error(err))
+		http.Error(w, "failed to serialize response", http.StatusInternalServerError)
+	}
+	http.ServeContent(w, r, "", time.Now(), bytes.NewReader(rBytes))
 }

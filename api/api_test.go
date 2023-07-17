@@ -100,7 +100,6 @@ func TestAPI(t *testing.T) {
 	t.Cleanup(func() {
 		os.RemoveAll("keyring-test")
 	})
-	t.Log("TODO: synchronize keyring with the simd environment")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	logger, err := zap.NewDevelopment()
@@ -132,28 +131,48 @@ func TestAPI(t *testing.T) {
 	require.NoError(t, err)
 	api.logger.Info("issued token", zap.String("token", jwtToken))
 	client := http.DefaultClient
-	t.Run("verify breaker client query works", func(t *testing.T) {
-		list, err := api.breakerClient.Accounts(ctx)
-		require.NoError(t, err)
-		require.True(t, len(list.Accounts) > 0)
-	})
+	// validate that the test environment setup process worked
+	list, err := api.breakerClient.Accounts(ctx)
+	require.NoError(t, err)
+	require.True(t, len(list.Accounts) > 0)
 	t.Run("v1/webhook", func(t *testing.T) {
-		api.logger.Info("executing webhook")
-		payload := PayloadV1{
-			Urls:    []string{"/cosmos.circuit.v1.MsgAuthorizeCircuitBreaker"},
-			Message: "amount > 1000",
-		}
-		data, err := json.Marshal(&payload)
-		require.NoError(t, err)
-		buffer := bytes.NewBuffer(data)
-		req, err := http.NewRequest("POST", "http://127.0.0.1:42690/v1/webhook", buffer)
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer: %s", jwtToken))
-		require.NoError(t, err)
-		res, err := client.Do(req)
-		require.NoError(t, err)
-		data, err = io.ReadAll(res.Body)
-		require.NoError(t, err)
-		_ = data
+		t.Run("mode_trip", func(t *testing.T) {
+			api.logger.Info("executing webhook")
+			payload := PayloadV1{
+				Urls:      []string{"/cosmos.circuit.v1.MsgAuthorizeCircuitBreaker"},
+				Message:   "amount > 1000",
+				Operation: MODE_TRIP,
+			}
+			data, err := json.Marshal(&payload)
+			require.NoError(t, err)
+			buffer := bytes.NewBuffer(data)
+			req, err := http.NewRequest("POST", "http://127.0.0.1:42690/v1/webhook", buffer)
+			req.Header.Set("Authorization", fmt.Sprintf("Bearer: %s", jwtToken))
+			require.NoError(t, err)
+			res, err := client.Do(req)
+			require.NoError(t, err)
+			data, err = io.ReadAll(res.Body)
+			require.NoError(t, err)
+			_ = data
+		})
+		t.Run("mode_reset", func(t *testing.T) {
+			payload := PayloadV1{
+				Urls:      []string{"/cosmos.circuit.v1.MsgAuthorizeCircuitBreaker"},
+				Message:   "amount > 1000",
+				Operation: MODE_RESET,
+			}
+			data, err := json.Marshal(&payload)
+			require.NoError(t, err)
+			buffer := bytes.NewBuffer(data)
+			req, err := http.NewRequest("POST", "http://127.0.0.1:42690/v1/webhook", buffer)
+			req.Header.Set("Authorization", fmt.Sprintf("Bearer: %s", jwtToken))
+			require.NoError(t, err)
+			res, err := client.Do(req)
+			require.NoError(t, err)
+			data, err = io.ReadAll(res.Body)
+			require.NoError(t, err)
+			_ = data
+		})
 	})
 	api.logger.Info("sleeping")
 	time.Sleep(time.Second * 5)
