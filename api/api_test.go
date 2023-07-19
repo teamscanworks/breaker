@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -32,20 +33,20 @@ func TestAPI(t *testing.T) {
 	cfg := compass.GetSimdConfig()
 	breaker, err := breakerclient.NewBreakerClient(ctx, logger, cfg)
 	require.NoError(t, err)
-	jwt := NewJWT("password123", "userId", 300)
 
+	// this part is needed in test environments since the key is not loaded
+	_, err = breaker.NewMnemonic("default", preExistingMnemonic)
+	require.NoError(t, err)
+
+	jwt := NewJWT("password123", "userId", 3000)
+	require.NoError(t, ConfigBreakerClient(breaker, "default"))
 	api, err := NewAPI(ctx, logger, jwt, ApiOpts{
 		ListenAddress:                "127.0.0.1:42690",
 		Password:                     "password123",
 		IdentifierField:              "userId",
-		TokenValidityDurationSeconds: 300,
-	})
+		TokenValidityDurationSeconds: 3000,
+	}, breaker)
 	require.NoError(t, err)
-	api.WithBreakerClient(breaker)
-	_, err = api.breakerClient.NewMnemonic("default", preExistingMnemonic)
-	require.NoError(t, err)
-	require.NoError(t, api.breakerClient.SetFromAddress())
-	api.breakerClient.UpdateClientFromName("default")
 	go func() {
 		api.Serve()
 	}()
@@ -61,7 +62,6 @@ func TestAPI(t *testing.T) {
 	apiClient := NewAPIClient("http://127.0.0.1:42690", jwtToken)
 	t.Run("v1", func(t *testing.T) {
 		t.Run("webhook/mode_trip", func(t *testing.T) {
-			api.logger.Info("executing webhook")
 			resp, err := apiClient.TripCircuit([]string{"/cosmos.circuit.v1.MsgAuthorizeCircuitBreaker"}, "amount > 1000")
 			require.NoError(t, err)
 			require.Equal(t, resp.Operation, MODE_TRIP)
@@ -71,8 +71,7 @@ func TestAPI(t *testing.T) {
 			t.Log(resp)
 		})
 		t.Run("webhook/unsupported_mode", func(t *testing.T) {
-			api.logger.Info("executing webhook")
-			//apiClient.testRequestInvalidMode(t, []string{"/cosmos.circuit.v1.MsgAuthorizeCircuitBreaker"}, "amount > 1000")
+			apiClient.testRequestInvalidMode(t, []string{"/cosmos.circuit.v1.MsgAuthorizeCircuitBreaker"}, "amount > 1000")
 		})
 
 		t.Run("status", func(t *testing.T) {
@@ -85,12 +84,12 @@ func TestAPI(t *testing.T) {
 			t.Run("list_disabled_commands", func(t *testing.T) {
 				resp, err := apiClient.DisabledCommands()
 				require.NoError(t, err)
+				require.True(t, resp.DisabledList[0] == "/cosmos.circuit.v1.MsgAuthorizeCircuitBreaker")
 				require.True(t, len(resp.DisabledList) > 0)
 				t.Log(resp)
 			})
 		})
 		t.Run("webhook/mode_reset", func(t *testing.T) {
-			api.logger.Info("executing webhook")
 			resp, err := apiClient.ResetCircuit([]string{"/cosmos.circuit.v1.MsgAuthorizeCircuitBreaker"}, "amount > 1000")
 			require.NoError(t, err)
 			require.Equal(t, resp.Operation, MODE_RESET)
@@ -101,7 +100,6 @@ func TestAPI(t *testing.T) {
 		})
 
 		t.Run("status", func(t *testing.T) {
-
 			t.Run("list_disabled_commands", func(t *testing.T) {
 				resp, err := apiClient.DisabledCommands()
 				require.NoError(t, err)
@@ -110,8 +108,6 @@ func TestAPI(t *testing.T) {
 			})
 		})
 	})
-	api.logger.Info("sleeping")
-	time.Sleep(time.Second * 5)
 	api.Close()
 }
 
@@ -122,7 +118,6 @@ func (ac *APIClient) testRequestInvalidMode(t *testing.T, urls []string, message
 		Message:   message,
 		Operation: Mode(100),
 	}
-	t.Log("payload ", payload)
 	data, err := json.Marshal(&payload)
 	if err != nil {
 		panic(err)
@@ -141,7 +136,7 @@ func (ac *APIClient) testRequestInvalidMode(t *testing.T, urls []string, message
 	if err != nil {
 		panic(err)
 	}
-	if string(data) != "unsupported mode" {
+	if !strings.Contains(string(data), "unsupported mode") {
 		panic(fmt.Sprintf("test failed %s", string(data)))
 	}
 }

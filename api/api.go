@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -20,8 +21,11 @@ type API struct {
 	jwt           *JWT
 	breakerClient *breakerclient.BreakerClient
 	addr          string
+	// used to block closure until api is shutdown
+	doneCh chan struct{}
 }
 
+// Options used to configured the API Server
 type ApiOpts struct {
 	ListenAddress                string
 	Password                     string
@@ -35,13 +39,28 @@ func NewAPI(
 	log *zap.Logger,
 	jwt *JWT,
 	opts ApiOpts,
+	bc *breakerclient.BreakerClient,
 ) (*API, error) {
 	ctx, cancel := context.WithCancel(ctx)
-	logger := log.Named("breaker.api")
-	r := chi.NewRouter()
-	r.Use(middleware.RequestID)
-	r.Use(NewLoggerMiddleware(logger))
-	api := API{ctx: ctx, cancel: cancel, router: r, jwt: NewJWT(opts.Password, opts.IdentifierField, opts.TokenValidityDurationSeconds), addr: opts.ListenAddress, logger: logger}
+
+	api := API{
+		ctx:    ctx,
+		cancel: cancel,
+		router: chi.NewRouter(),
+		jwt: NewJWT(
+			opts.Password,
+			opts.IdentifierField,
+			opts.TokenValidityDurationSeconds,
+		),
+		addr:          opts.ListenAddress,
+		logger:        log.Named("breaker.api"),
+		breakerClient: bc,
+		doneCh:        make(chan struct{}, 1),
+	}
+
+	// initialize router
+	api.router.Use(middleware.RequestID)
+	api.router.Use(NewLoggerMiddleware(api.logger))
 	api.router.Route("/v1", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
 			// authenticated urls
@@ -51,21 +70,35 @@ func NewAPI(
 		})
 		r.Group(func(r chi.Router) {
 			// unauthenticated urls
-			r.Get("/status/list/disabledCommands", api.ListDisabledCommands)
-			r.Get("/status/list/accounts", api.ListAccounts)
+			r.Route("/status", func(r chi.Router) {
+				r.Route("/list", func(r chi.Router) {
+					r.Get("/disabledCommands", api.ListDisabledCommands)
+					r.Get("/accounts", api.ListAccounts)
+				})
+			})
 		})
 	})
+
 	return &api, nil
 }
 
-// Sets the breakerClient field, needed for non dry-run webhook calls, as well as the status calls.
-func (api *API) WithBreakerClient(client *breakerclient.BreakerClient) {
-	api.breakerClient = client
+// Configures the breakerclient such that it may be used by the API for signing transactions.
+// This should be called against breakerclient.BreakerClient before passing it as a parameter during api initialization
+func ConfigBreakerClient(
+	client *breakerclient.BreakerClient,
+	keyName string,
+) error {
+	if err := client.SetFromAddress(); err != nil {
+		return fmt.Errorf("failed to initialize from address %s", err)
+	}
+	client.UpdateClientFromName(keyName)
+	return nil
 }
 
 // Cancels the api context, triggering a shutdown of the api router.
 func (api *API) Close() {
 	api.cancel()
+	<-api.doneCh
 }
 
 // Blocking call that starts a http server exposing the api.
@@ -83,7 +116,9 @@ func (api *API) Serve() error {
 		case err := <-errCh:
 			return err
 		case <-api.ctx.Done():
-			return server.Close()
+			err := server.Close()
+			api.doneCh <- struct{}{}
+			return err
 		}
 	}
 }

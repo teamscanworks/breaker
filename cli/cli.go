@@ -90,11 +90,25 @@ func RunCLI() {
 							cfg.API.IdentifierField,
 							cfg.API.TokenValidityDurationSeconds,
 						)
+						bc, err := breakerclient.NewBreakerClient(
+							ctx,
+							logger,
+							&cfg.Compass,
+						)
+						if err != nil {
+							cancel()
+							return err
+						}
+						if err = api.ConfigBreakerClient(bc, cCtx.String("key.name")); err != nil {
+							cancel()
+							return err
+						}
 						apiServer, err := api.NewAPI(
 							ctx,
 							logger,
 							jwt,
 							apiOpts,
+							bc,
 						)
 						if err != nil {
 							cancel()
@@ -111,22 +125,17 @@ func RunCLI() {
 							apiServer.Close()
 							wg.Done()
 						}()
-						bc, err := breakerclient.NewBreakerClient(
-							ctx,
-							logger,
-							&cfg.Compass,
-						)
-						if err != nil {
-							// clear resources
-							quitChannel <- os.Interrupt
-							return err
-						}
-						apiServer.WithBreakerClient(bc)
 						if err := apiServer.Serve(); err != nil {
 							logger.Error("api serve encountered error", zap.Error(err))
 						}
 						wg.Wait()
 						return nil
+					},
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:  "key.name",
+							Usage: "name of the key to load from the keyring",
+						},
 					},
 				},
 			},

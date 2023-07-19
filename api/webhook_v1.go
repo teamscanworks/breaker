@@ -45,16 +45,23 @@ type Response struct {
 // deserializing a PayloadV1 message type. You may specific one of two modes, either
 // tripping or resetting a circuit for a list of module request urls.
 func (api *API) HandleWebookV1(w http.ResponseWriter, r *http.Request) {
+	if api.breakerClient == nil {
+		http.Error(w, "no initialized breaker client", http.StatusInternalServerError)
+		return
+	}
+
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
+
 	var payload PayloadV1
 	if err = json.Unmarshal(data, &payload); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
 	var msg string
 	if payload.Operation == MODE_TRIP {
 		msg = "tripping circuit"
@@ -64,11 +71,7 @@ func (api *API) HandleWebookV1(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unsupported mode", http.StatusBadRequest)
 		return
 	}
-	api.logger.Info(msg, zap.String("message", payload.Message), zap.Any("urls", payload.Urls))
-	if api.breakerClient == nil {
-		http.Error(w, "no initialized breaker client", http.StatusInternalServerError)
-		return
-	}
+
 	var response Response
 	if payload.Operation == MODE_TRIP {
 		if tx, err := api.breakerClient.TripCircuitBreaker(r.Context(), payload.Urls); err != nil {
@@ -77,7 +80,7 @@ func (api *API) HandleWebookV1(w http.ResponseWriter, r *http.Request) {
 				Urls:      payload.Urls,
 				Operation: payload.Operation,
 			}
-			api.logger.Error("failed to trip circuit breaker", zap.Error(err))
+			api.logger.Error("failed to trip circuit breaker", zap.Any("urls", payload.Urls), zap.Error(err))
 		} else {
 			response = Response{
 				Message:   "ok",
@@ -85,7 +88,7 @@ func (api *API) HandleWebookV1(w http.ResponseWriter, r *http.Request) {
 				Operation: payload.Operation,
 				TxHash:    tx,
 			}
-			api.logger.Info("tripped circuit", zap.Any("urls", payload.Urls))
+			api.logger.Info("tripped circuit", zap.Any("urls", payload.Urls), zap.String("message", msg))
 		}
 	} else if payload.Operation == MODE_RESET {
 		if tx, err := api.breakerClient.ResetCircuitBreaker(r.Context(), payload.Urls); err != nil {
@@ -94,7 +97,7 @@ func (api *API) HandleWebookV1(w http.ResponseWriter, r *http.Request) {
 				Urls:      payload.Urls,
 				Operation: payload.Operation,
 			}
-			api.logger.Error("failed to trip circuit breaker", zap.Error(err))
+			api.logger.Error("failed to trip circuit breaker", zap.Any("urls", payload.Urls), zap.Error(err))
 		} else {
 			response = Response{
 				Message:   "ok",
@@ -102,9 +105,10 @@ func (api *API) HandleWebookV1(w http.ResponseWriter, r *http.Request) {
 				Operation: payload.Operation,
 				TxHash:    tx,
 			}
-			api.logger.Info("reset circuit", zap.Any("urls", payload.Urls))
+			api.logger.Info("reset circuit", zap.Any("urls", payload.Urls), zap.String("message", msg))
 		}
 	}
+
 	rBytes, err := json.Marshal(&response)
 	if err != nil {
 		api.logger.Error("failed to serialize response", zap.Error(err))
