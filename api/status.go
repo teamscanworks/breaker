@@ -11,7 +11,7 @@ import (
 // Returns types.DisabledListResponse containing all module request urls that have been disabled.
 func (api *API) ListDisabledCommands(w http.ResponseWriter, r *http.Request) {
 	if api.breakerClient == nil {
-		http.Error(w, "no initialized cosmos client", http.StatusInternalServerError)
+		http.Error(w, "no initialized breaker client", http.StatusInternalServerError)
 		return
 	}
 	res, err := api.breakerClient.ListDisabledCommands(r.Context())
@@ -32,7 +32,7 @@ func (api *API) ListDisabledCommands(w http.ResponseWriter, r *http.Request) {
 // Returns types.AccountsResponse containing all accounts and their corresponding permission levels
 func (api *API) ListAccounts(w http.ResponseWriter, r *http.Request) {
 	if api.breakerClient == nil {
-		http.Error(w, "no initialized cosmos client", http.StatusInternalServerError)
+		http.Error(w, "no initialized breaker client", http.StatusInternalServerError)
 		return
 	}
 	res, err := api.breakerClient.Accounts(r.Context())

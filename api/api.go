@@ -51,8 +51,8 @@ func NewAPI(
 		})
 		r.Group(func(r chi.Router) {
 			// unauthenticated urls
-			r.Get("/status/listDisabledCommands", api.ListDisabledCommands)
-			r.Get("/status/accounts", api.ListAccounts)
+			r.Get("/status/list/disabledCommands", api.ListDisabledCommands)
+			r.Get("/status/list/accounts", api.ListAccounts)
 		})
 	})
 	return &api, nil
