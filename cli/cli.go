@@ -13,6 +13,7 @@ import (
 	"github.com/teamscanworks/breaker/config"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
+	terminal "golang.org/x/term"
 )
 
 // create, and execute the breaker-cli application
@@ -71,22 +72,15 @@ func RunCLI() {
 				{
 					Name:  "start",
 					Usage: "start the api server",
-					Flags: []cli.Flag{
-						&cli.BoolFlag{
-							Name:  "dry.run",
-							Usage: "do not broadcast transactions",
-						},
-					},
 					Action: func(cCtx *cli.Context) error {
 						ctx, cancel := context.WithCancel(cCtx.Context)
 						cfgPath := cCtx.String("config.path")
-						dryRun := cCtx.Bool("dry.run")
 						cfg, err := config.LoadConfig(cfgPath)
 						if err != nil {
 							cancel()
 							return err
 						}
-						apiOpts := cfg.ApiOpts(dryRun)
+						apiOpts := cfg.ApiOpts()
 						logger, err := cfg.ZapLogger(cCtx.Bool("debug.log"))
 						if err != nil {
 							cancel()
@@ -97,11 +91,25 @@ func RunCLI() {
 							cfg.API.IdentifierField,
 							cfg.API.TokenValidityDurationSeconds,
 						)
+						bc, err := breakerclient.NewBreakerClient(
+							ctx,
+							logger,
+							&cfg.Compass,
+						)
+						if err != nil {
+							cancel()
+							return err
+						}
+						if err = api.ConfigBreakerClient(bc, cCtx.String("key.name")); err != nil {
+							cancel()
+							return err
+						}
 						apiServer, err := api.NewAPI(
 							ctx,
 							logger,
 							jwt,
 							apiOpts,
+							bc,
 						)
 						if err != nil {
 							cancel()
@@ -118,28 +126,17 @@ func RunCLI() {
 							apiServer.Close()
 							wg.Done()
 						}()
-						if dryRun {
-							if err := apiServer.Serve(); err != nil {
-								logger.Error("api serve encountered error", zap.Error(err))
-							}
-						} else {
-							bc, err := breakerclient.NewBreakerClient(
-								ctx,
-								logger,
-								&cfg.Compass,
-							)
-							if err != nil {
-								// clear resources
-								quitChannel <- os.Interrupt
-								return err
-							}
-							apiServer.WithBreakerClient(bc)
-							if err := apiServer.Serve(); err != nil {
-								logger.Error("api serve encountered error", zap.Error(err))
-							}
+						if err := apiServer.Serve(); err != nil {
+							logger.Error("api serve encountered error", zap.Error(err))
 						}
 						wg.Wait()
 						return nil
+					},
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:  "key.name",
+							Usage: "name of the key to load from the keyring",
+						},
 					},
 				},
 			},
@@ -192,10 +189,11 @@ func RunCLI() {
 						&cli.StringFlag{
 							Name:  "key.name",
 							Usage: "name to refer to the keypair with",
+							Value: "default",
 						},
 						&cli.BoolFlag{
 							Name:  "create.mnemonic",
-							Usage: "if present, create a keypair via a new mnemonic phrase",
+							Usage: "if present, create a keypair via a new mnemonic phrase, otherwise read mnemonic from stdin",
 						},
 					},
 					Action: func(cCtx *cli.Context) error {
@@ -220,7 +218,16 @@ func RunCLI() {
 							}
 							fmt.Println("mnemonic ", mnemonic)
 						} else {
-							return fmt.Errorf("invalid options")
+							logger.Info("reading mnemonic from user input")
+							fmt.Println("please paste your mnemonic phrase")
+							mnemonic, err := terminal.ReadPassword(int(os.Stdin.Fd()))
+							if err != nil {
+								return fmt.Errorf("failed to read password %s", err)
+							}
+							_, err = bc.NewMnemonic(cCtx.String("key.name"), string(mnemonic))
+							if err != nil {
+								return fmt.Errorf("failed to import mnemonic %s", err)
+							}
 						}
 						return nil
 					},

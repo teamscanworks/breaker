@@ -33,4 +33,12 @@ func TestBreakerClient(t *testing.T) {
 	_, err = breaker.NewMnemonic("preExisting", preExistingMnemonic)
 	// this should error because the simd test environment already has it configured
 	require.Error(t, err)
+	require.NoError(t, breaker.SetFromAddress())
+	active, err := breaker.GetActiveKeypair()
+	require.NoError(t, err)
+	require.NotNil(t, active)
+	rec, err := breaker.Client.KeyringRecordAt(0)
+	require.NoError(t, err)
+	require.NotNil(t, rec)
+
 }

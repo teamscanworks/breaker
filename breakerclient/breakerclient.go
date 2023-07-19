@@ -7,7 +7,6 @@ import (
 	"cosmossdk.io/x/circuit"
 	"cosmossdk.io/x/circuit/types"
 	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/client/tx"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/spf13/pflag"
@@ -34,14 +33,12 @@ import (
 //
 // ````
 type BreakerClient struct {
-	Client    *compass.Client
-	flagSet   *pflag.FlagSet
-	log       *zap.Logger
-	txFactory tx.Factory
-	qc        types.QueryClient
-	cCtx      client.Context
-	ctx       context.Context
-	cancelFn  context.CancelFunc
+	Client   *compass.Client
+	flagSet  *pflag.FlagSet
+	log      *zap.Logger
+	qc       types.QueryClient
+	ctx      context.Context
+	cancelFn context.CancelFunc
 }
 
 // Wraps the compass client with additional functionality specific to the x/circuit module.
@@ -62,58 +59,22 @@ func NewBreakerClient(
 	}
 	// initialize circuit breaker module specific clients
 	qc := types.NewQueryClient(cl.GRPC)
-	txFactory := cl.TxFactory()
-	cCtx := cl.ClientContext()
 
 	bc := &BreakerClient{
-		ctx:       ctx,
-		cancelFn:  cancel,
-		Client:    cl,
-		qc:        qc,
-		flagSet:   pflag.NewFlagSet("", pflag.ExitOnError),
-		txFactory: txFactory,
-		log:       log.Named("breaker.client"),
-		cCtx:      cCtx,
-	}
-	// attempt to set a from account if there is at least 1 key in the keyring
-	if err = bc.SetFromAddress(); err != nil {
-		cancel()
-		return nil, err
+		ctx:      ctx,
+		cancelFn: cancel,
+		Client:   cl,
+		qc:       qc,
+		flagSet:  pflag.NewFlagSet("", pflag.ExitOnError),
+		log:      log.Named("breaker.client"),
 	}
 	return bc, nil
-}
-
-// Helper function that attempts to set the address used by the client context for signing transactions
-// logs a warning if no keys are configured, otherwise takes the first available key.
-func (bc *BreakerClient) SetFromAddress() error {
-	activeKp, err := bc.GetActiveKeypair()
-	if err != nil {
-		return err
-	}
-	if activeKp == nil {
-		bc.log.Warn("no keys found, you should create at least one")
-	} else {
-		bc.log.Info("configured from address", zap.String("from.address", activeKp.String()))
-		bc.cCtx = bc.cCtx.WithFromAddress(*activeKp)
-	}
-	return nil
 }
 
 // Returns the keypair actively in use for signing transactions (the first key in the keyring).
 // If no address has been configured returns `nil, nil`
 func (bc *BreakerClient) GetActiveKeypair() (*sdktypes.AccAddress, error) {
-	keys, err := bc.Client.Keyring.List()
-	if err != nil {
-		return nil, err
-	}
-	if len(keys) == 0 {
-		return nil, nil
-	}
-	kp, err := keys[0].GetAddress()
-	if err != nil {
-		return nil, err
-	}
-	return &kp, nil
+	return bc.Client.GetActiveKeypair()
 }
 
 // Lists commands/urls that have had their circuits tripped.
@@ -136,44 +97,47 @@ func (bc *BreakerClient) Accounts(ctx context.Context) (*types.AccountsResponse,
 }
 
 // Authorize a given account with the specific permission level.
-func (bc *BreakerClient) Authorize(ctx context.Context, grantee string, permissionLevel string, limitTypeUrls []string) error {
+func (bc *BreakerClient) Authorize(ctx context.Context, grantee string, permissionLevel string, limitTypeUrls []string) (string, error) {
 	val, ok := types.Permissions_Level_value[permissionLevel]
 	if !ok {
-		return fmt.Errorf("failed to find permission level value for key %s", permissionLevel)
+		return "", fmt.Errorf("failed to find permission level value for key %s", permissionLevel)
 	}
 	permission := types.Permissions{
 		Level:         types.Permissions_Level(val),
 		LimitTypeUrls: limitTypeUrls,
 	}
-	granterAddr := bc.cCtx.GetFromAddress().String()
+	granterAddr := bc.Client.FromAddress()
 	msg := types.NewMsgAuthorizeCircuitBreaker(granterAddr, grantee, &permission)
-	if err := tx.BroadcastTx(bc.cCtx, bc.txFactory, msg); err != nil {
-		bc.log.Error("transaction broadcast failed", zap.Error(err), zap.Stack("stacktrace"))
-		return fmt.Errorf("failed to broadcast transaction %v", err)
+	if tx, err := bc.Client.SendTransaction(ctx, msg); err != nil {
+		bc.log.Error("failed to send transaction", zap.Stack("stack.trace"))
+		return "", err
+	} else {
+		return tx, nil
 	}
-	return nil
 }
 
 // Trip a circuit for the given urls, preventing calls to the module request urls.
-func (bc *BreakerClient) TripCircuitBreaker(ctx context.Context, urls []string) error {
-	granterAddr := bc.cCtx.GetFromAddress().String()
+func (bc *BreakerClient) TripCircuitBreaker(ctx context.Context, urls []string) (string, error) {
+	granterAddr := bc.Client.FromAddress()
 	msg := types.NewMsgTripCircuitBreaker(granterAddr, urls)
-	if err := tx.BroadcastTx(bc.cCtx, bc.txFactory, msg); err != nil {
-		bc.log.Error("transaction broadcast failed", zap.Error(err), zap.Stack("stacktrace"))
-		return fmt.Errorf("failed to broadcast transaction %v", err)
+	if tx, err := bc.Client.SendTransaction(ctx, msg); err != nil {
+		bc.log.Error("failed to send transaction", zap.Stack("stack.trace"))
+		return "", err
+	} else {
+		return tx, nil
 	}
-	return nil
 }
 
 // Resets a tripped circuit, allowing calls to the module request urls.
-func (bc *BreakerClient) ResetCircuitBreaker(ctx context.Context, urls []string) error {
-	granterAddr := bc.cCtx.GetFromAddress().String()
+func (bc *BreakerClient) ResetCircuitBreaker(ctx context.Context, urls []string) (string, error) {
+	granterAddr := bc.Client.FromAddress()
 	msg := types.NewMsgResetCircuitBreaker(granterAddr, urls)
-	if err := tx.BroadcastTx(bc.cCtx, bc.txFactory, msg); err != nil {
-		bc.log.Error("transaction broadcast failed", zap.Error(err), zap.Stack("stacktrace"))
-		return fmt.Errorf("failed to broadcast transaction %v", err)
+	if tx, err := bc.Client.SendTransaction(ctx, msg); err != nil {
+		bc.log.Error("failed to send transaction", zap.Stack("stack.trace"))
+		return "", err
+	} else {
+		return tx, nil
 	}
-	return nil
 }
 
 // Creates a new mnemonic phrase and inserts into the configured keyring. Coin type defaults to 118.
@@ -183,5 +147,20 @@ func (bc *BreakerClient) NewMnemonic(keyName string, mnemonic ...string) (string
 		bc.log.Error("failed to add new key", zap.Error(err))
 		return "", fmt.Errorf("failed to create new mnemonic %s", err)
 	}
+	if err := bc.Client.MigrateKeyring(); err != nil {
+		return "", fmt.Errorf("failed to migrate keyring %s", err)
+	} else {
+		bc.log.Info("keyring migration ok")
+	}
 	return keyOutput.Mnemonic, nil
+}
+
+func (bc *BreakerClient) UpdateClientFromName(name string) {
+	bc.Client.UpdateFromName(name)
+}
+
+// Helper function that attempts to set the address used by the client context for signing transactions
+// logs a warning if no keys are configured, otherwise takes the first available key.
+func (bc *BreakerClient) SetFromAddress() error {
+	return bc.Client.SetFromAddress()
 }
