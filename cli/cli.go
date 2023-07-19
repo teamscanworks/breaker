@@ -13,6 +13,7 @@ import (
 	"github.com/teamscanworks/breaker/config"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
+	terminal "golang.org/x/term"
 )
 
 // create, and execute the breaker-cli application
@@ -188,10 +189,11 @@ func RunCLI() {
 						&cli.StringFlag{
 							Name:  "key.name",
 							Usage: "name to refer to the keypair with",
+							Value: "default",
 						},
 						&cli.BoolFlag{
 							Name:  "create.mnemonic",
-							Usage: "if present, create a keypair via a new mnemonic phrase",
+							Usage: "if present, create a keypair via a new mnemonic phrase, otherwise read mnemonic from stdin",
 						},
 					},
 					Action: func(cCtx *cli.Context) error {
@@ -216,7 +218,16 @@ func RunCLI() {
 							}
 							fmt.Println("mnemonic ", mnemonic)
 						} else {
-							return fmt.Errorf("invalid options")
+							logger.Info("reading mnemonic from user input")
+							fmt.Println("please paste your mnemonic phrase")
+							mnemonic, err := terminal.ReadPassword(int(os.Stdin.Fd()))
+							if err != nil {
+								return fmt.Errorf("failed to read password %s", err)
+							}
+							_, err = bc.NewMnemonic(cCtx.String("key.name"), string(mnemonic))
+							if err != nil {
+								return fmt.Errorf("failed to import mnemonic %s", err)
+							}
 						}
 						return nil
 					},

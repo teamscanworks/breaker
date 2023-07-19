@@ -108,6 +108,7 @@ func (api *API) Serve() error {
 		Handler: api.router,
 	}
 	errCh := make(chan error, 1)
+	api.logger.Info("starting api")
 	go func() {
 		errCh <- server.ListenAndServe()
 	}()
@@ -116,7 +117,7 @@ func (api *API) Serve() error {
 		case err := <-errCh:
 			return err
 		case <-api.ctx.Done():
-			err := server.Close()
+			err := server.Shutdown(api.ctx)
 			api.doneCh <- struct{}{}
 			return err
 		}

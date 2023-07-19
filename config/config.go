@@ -17,7 +17,7 @@ var (
 	ExampleConfig = Configuration{
 		Compass: *compass.GetSimdConfig(),
 		API: API{
-			ListenAddress: "http://127.0.0.1:6666",
+			ListenAddress: "127.0.0.1:6666",
 			Password:      "password123",
 			// empty means no extra identifier is used when validating jwts
 			IdentifierField:              "",

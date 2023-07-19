@@ -68,18 +68,7 @@ func NewBreakerClient(
 		flagSet:  pflag.NewFlagSet("", pflag.ExitOnError),
 		log:      log.Named("breaker.client"),
 	}
-	// attempt to set a from account if there is at least 1 key in the keyring
-	if err = bc.SetFromAddress(); err != nil {
-		cancel()
-		return nil, err
-	}
 	return bc, nil
-}
-
-// Helper function that attempts to set the address used by the client context for signing transactions
-// logs a warning if no keys are configured, otherwise takes the first available key.
-func (bc *BreakerClient) SetFromAddress() error {
-	return bc.Client.SetFromAddress()
 }
 
 // Returns the keypair actively in use for signing transactions (the first key in the keyring).
@@ -168,4 +157,10 @@ func (bc *BreakerClient) NewMnemonic(keyName string, mnemonic ...string) (string
 
 func (bc *BreakerClient) UpdateClientFromName(name string) {
 	bc.Client.UpdateFromName(name)
+}
+
+// Helper function that attempts to set the address used by the client context for signing transactions
+// logs a warning if no keys are configured, otherwise takes the first available key.
+func (bc *BreakerClient) SetFromAddress() error {
+	return bc.Client.SetFromAddress()
 }
