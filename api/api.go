@@ -20,8 +20,6 @@ type API struct {
 	jwt           *JWT
 	breakerClient *breakerclient.BreakerClient
 	addr          string
-	// if true, do not invoke any cosmos transactions
-	dryRun bool
 }
 
 type ApiOpts struct {
@@ -29,7 +27,6 @@ type ApiOpts struct {
 	Password                     string
 	IdentifierField              string
 	TokenValidityDurationSeconds int64
-	DryRun                       bool
 }
 
 // Prepares the http api server
@@ -44,7 +41,7 @@ func NewAPI(
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(NewLoggerMiddleware(logger))
-	api := API{ctx: ctx, cancel: cancel, router: r, jwt: NewJWT(opts.Password, opts.IdentifierField, opts.TokenValidityDurationSeconds), addr: opts.ListenAddress, logger: logger, dryRun: opts.DryRun}
+	api := API{ctx: ctx, cancel: cancel, router: r, jwt: NewJWT(opts.Password, opts.IdentifierField, opts.TokenValidityDurationSeconds), addr: opts.ListenAddress, logger: logger}
 	api.router.Route("/v1", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
 			// authenticated urls

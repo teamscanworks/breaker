@@ -71,22 +71,15 @@ func RunCLI() {
 				{
 					Name:  "start",
 					Usage: "start the api server",
-					Flags: []cli.Flag{
-						&cli.BoolFlag{
-							Name:  "dry.run",
-							Usage: "do not broadcast transactions",
-						},
-					},
 					Action: func(cCtx *cli.Context) error {
 						ctx, cancel := context.WithCancel(cCtx.Context)
 						cfgPath := cCtx.String("config.path")
-						dryRun := cCtx.Bool("dry.run")
 						cfg, err := config.LoadConfig(cfgPath)
 						if err != nil {
 							cancel()
 							return err
 						}
-						apiOpts := cfg.ApiOpts(dryRun)
+						apiOpts := cfg.ApiOpts()
 						logger, err := cfg.ZapLogger(cCtx.Bool("debug.log"))
 						if err != nil {
 							cancel()
@@ -118,25 +111,19 @@ func RunCLI() {
 							apiServer.Close()
 							wg.Done()
 						}()
-						if dryRun {
-							if err := apiServer.Serve(); err != nil {
-								logger.Error("api serve encountered error", zap.Error(err))
-							}
-						} else {
-							bc, err := breakerclient.NewBreakerClient(
-								ctx,
-								logger,
-								&cfg.Compass,
-							)
-							if err != nil {
-								// clear resources
-								quitChannel <- os.Interrupt
-								return err
-							}
-							apiServer.WithBreakerClient(bc)
-							if err := apiServer.Serve(); err != nil {
-								logger.Error("api serve encountered error", zap.Error(err))
-							}
+						bc, err := breakerclient.NewBreakerClient(
+							ctx,
+							logger,
+							&cfg.Compass,
+						)
+						if err != nil {
+							// clear resources
+							quitChannel <- os.Interrupt
+							return err
+						}
+						apiServer.WithBreakerClient(bc)
+						if err := apiServer.Serve(); err != nil {
+							logger.Error("api serve encountered error", zap.Error(err))
 						}
 						wg.Wait()
 						return nil

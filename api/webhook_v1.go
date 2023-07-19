@@ -64,11 +64,7 @@ func (api *API) HandleWebookV1(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unsupported mode", http.StatusBadRequest)
 		return
 	}
-	api.logger.Info(msg, zap.String("message", payload.Message), zap.Any("urls", payload.Urls), zap.Bool("dry.run", api.dryRun))
-	if api.dryRun {
-		w.Write([]byte("dry run, skipping transaction invocation"))
-		return
-	}
+	api.logger.Info(msg, zap.String("message", payload.Message), zap.Any("urls", payload.Urls))
 	if api.breakerClient == nil {
 		http.Error(w, "no initialized breaker client", http.StatusInternalServerError)
 		return
@@ -76,12 +72,12 @@ func (api *API) HandleWebookV1(w http.ResponseWriter, r *http.Request) {
 	var response Response
 	if payload.Operation == MODE_TRIP {
 		if tx, err := api.breakerClient.TripCircuitBreaker(r.Context(), payload.Urls); err != nil {
-			api.logger.Error("failed to trip circuit breaker", zap.Error(err))
 			response = Response{
 				Message:   fmt.Sprintf("failed to trip circuit breaker %s", err),
 				Urls:      payload.Urls,
 				Operation: payload.Operation,
 			}
+			api.logger.Error("failed to trip circuit breaker", zap.Error(err))
 		} else {
 			response = Response{
 				Message:   "ok",
@@ -93,12 +89,12 @@ func (api *API) HandleWebookV1(w http.ResponseWriter, r *http.Request) {
 		}
 	} else if payload.Operation == MODE_RESET {
 		if tx, err := api.breakerClient.ResetCircuitBreaker(r.Context(), payload.Urls); err != nil {
-			api.logger.Error("failed to trip circuit breaker", zap.Error(err))
 			response = Response{
 				Message:   fmt.Sprintf("failed to reset circuit breaker %s", err),
 				Urls:      payload.Urls,
 				Operation: payload.Operation,
 			}
+			api.logger.Error("failed to trip circuit breaker", zap.Error(err))
 		} else {
 			response = Response{
 				Message:   "ok",

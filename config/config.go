@@ -104,11 +104,10 @@ func (c *Configuration) ZapLogger(debug bool) (*zap.Logger, error) {
 
 // Returns an instance of the api options struct, which can be set to not broadcast
 // any transactions by setting `dryRun` to true.
-func (c *Configuration) ApiOpts(dryRun bool) api.ApiOpts {
+func (c *Configuration) ApiOpts() api.ApiOpts {
 	return api.ApiOpts{
 		ListenAddress:                c.API.ListenAddress,
 		IdentifierField:              c.API.IdentifierField,
 		TokenValidityDurationSeconds: c.API.TokenValidityDurationSeconds,
-		DryRun:                       dryRun,
 	}
 }

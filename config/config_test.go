@@ -22,11 +22,10 @@ func TestConfig(t *testing.T) {
 		require.NoError(t, err)
 		logger.Debug("hello world")
 		logger.Sync()
-		apiOpts := cfg.ApiOpts(true)
+		apiOpts := cfg.ApiOpts()
 		require.Equal(t, cfg.API.ListenAddress, apiOpts.ListenAddress)
 		require.Equal(t, "", apiOpts.IdentifierField)
 		require.Equal(t, cfg.API.TokenValidityDurationSeconds, apiOpts.TokenValidityDurationSeconds)
-		require.Equal(t, true, apiOpts.DryRun)
 	})
 	t.Run("osmosis", func(t *testing.T) {
 		t.Cleanup(func() {
@@ -42,11 +41,10 @@ func TestConfig(t *testing.T) {
 		require.NoError(t, err)
 		logger.Debug("hello world")
 		logger.Sync()
-		apiOpts := cfg.ApiOpts(false)
+		apiOpts := cfg.ApiOpts()
 		require.Equal(t, cfg.API.ListenAddress, apiOpts.ListenAddress)
 		require.Equal(t, "osmosis", apiOpts.IdentifierField)
 		require.Equal(t, cfg.API.TokenValidityDurationSeconds, apiOpts.TokenValidityDurationSeconds)
-		require.Equal(t, false, apiOpts.DryRun)
 	})
 	t.Run("cosmos", func(t *testing.T) {
 		t.Cleanup(func() {
@@ -62,11 +60,10 @@ func TestConfig(t *testing.T) {
 		require.NoError(t, err)
 		logger.Debug("hello world")
 		logger.Sync()
-		apiOpts := cfg.ApiOpts(false)
+		apiOpts := cfg.ApiOpts()
 		require.Equal(t, cfg.API.ListenAddress, apiOpts.ListenAddress)
 		require.Equal(t, "cosmos", apiOpts.IdentifierField)
 		require.Equal(t, cfg.API.TokenValidityDurationSeconds, apiOpts.TokenValidityDurationSeconds)
-		require.Equal(t, false, apiOpts.DryRun)
 
 	})
 }
