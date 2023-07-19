@@ -11,7 +11,7 @@ require (
 	github.com/lestrrat-go/jwx/v2 v2.0.11
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.4
-	github.com/teamscanworks/compass v0.0.0-20230710055721-fab2f8a0a368
+	github.com/teamscanworks/compass v0.0.1
 	github.com/urfave/cli/v2 v2.25.7
 	go.uber.org/zap v1.24.0
 	gopkg.in/yaml.v2 v2.4.0
@@ -177,5 +177,3 @@ require (
 )
 
 replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
-
-replace github.com/teamscanworks/compass => ../compass
